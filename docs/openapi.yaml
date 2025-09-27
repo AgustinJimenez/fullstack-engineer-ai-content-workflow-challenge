@@ -1,0 +1,358 @@
+openapi: 3.0.3
+info:
+  title: AI Content Workflow API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/campaigns:
+    get:
+      summary: List campaigns
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Campaign'
+    post:
+      summary: Create campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+  /api/v1/campaigns/{id}:
+    get:
+      summary: Get campaign by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+    put:
+      summary: Update campaign
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignUpdate'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+    delete:
+      summary: Delete campaign
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: No Content
+
+  /api/v1/campaigns/{id}/content:
+    post:
+      summary: Add content piece to campaign
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentPiece'
+    get:
+      summary: List content for campaign
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContentPiece'
+
+  /api/v1/content/{id}:
+    get:
+      summary: Get content by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentPiece'
+    put:
+      summary: Update content
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentUpdate'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentPiece'
+
+  /api/v1/content/{id}/status-rollup:
+    get:
+      summary: Get per-language status roll-up for content
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentStatusRollup'
+
+  /api/v1/content/reviews:
+    post:
+      summary: Create review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+
+  /api/v1/ai/generate/{contentId}:
+    post:
+      summary: Generate AI content
+      parameters:
+        - in: path
+          name: contentId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIGeneration'
+
+  /api/v1/ai/translate/{contentId}:
+    post:
+      summary: Translate content
+      parameters:
+        - in: path
+          name: contentId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TranslateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Translation'
+
+components:
+  schemas:
+    Campaign:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        status: { type: string }
+        defaultLanguage: { type: string }
+        targetLanguages:
+          type: array
+          items: { type: string }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    CampaignCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        defaultLanguage: { type: string, default: 'en' }
+        targetLanguages:
+          type: array
+          items: { type: string }
+    CampaignUpdate:
+      allOf:
+        - $ref: '#/components/schemas/CampaignCreate'
+    ContentPiece:
+      type: object
+      properties:
+        id: { type: integer }
+        campaignId: { type: integer }
+        type: { type: string }
+        originalContent: { type: string, nullable: true }
+        language: { type: string }
+        status: { type: string }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+        translations:
+          type: array
+          items: { $ref: '#/components/schemas/Translation' }
+        aiGenerations:
+          type: array
+          items: { $ref: '#/components/schemas/AIGeneration' }
+    ContentCreate:
+      type: object
+      required: [campaignId, type]
+      properties:
+        campaignId: { type: integer }
+        type: { type: string }
+        originalContent: { type: string }
+        language: { type: string, default: 'en' }
+    ContentUpdate:
+      type: object
+      properties:
+        originalContent: { type: string }
+        status: { type: string }
+    AIGeneration:
+      type: object
+      properties:
+        id: { type: integer }
+        contentPieceId: { type: integer }
+        aiModel: { type: string }
+        modelVersion: { type: string }
+        promptUsed: { type: string }
+        generatedText: { type: string }
+        createdAt: { type: string }
+    Translation:
+      type: object
+      properties:
+        id: { type: integer }
+        contentPieceId: { type: integer }
+        targetLanguage: { type: string }
+        translatedText: { type: string }
+        aiModel: { type: string }
+        status: { type: string }
+        qualityScore: { type: number, format: float, nullable: true }
+        createdAt: { type: string }
+    Review:
+      type: object
+      properties:
+        id: { type: integer }
+        contentPieceId: { type: integer }
+        reviewerName: { type: string }
+        status: { type: string }
+        feedback: { type: string }
+        language: { type: string }
+        reviewedAt: { type: string }
+    ReviewCreate:
+      type: object
+      required: [contentPieceId, status]
+      properties:
+        contentPieceId: { type: integer }
+        reviewerName: { type: string }
+        status: { type: string, enum: ['approved','rejected','needs_revision'] }
+        feedback: { type: string }
+        language: { type: string }
+    GenerateRequest:
+      type: object
+      required: [aiModel]
+      properties:
+        aiModel: { type: string, enum: ['openai','anthropic'] }
+        prompt: { type: string }
+    TranslateRequest:
+      type: object
+      required: [targetLanguage]
+      properties:
+        targetLanguage: { type: string }
+        aiModel: { type: string, enum: ['openai','anthropic'] }
+    ContentStatusRollup:
+      type: object
+      properties:
+        contentPieceId: { type: integer }
+        statusByLanguage:
+          type: object
+          additionalProperties: { type: string }
+        counts:
+          type: object
+          properties:
+            total: { type: integer }
+            approved: { type: integer }
+            rejected: { type: integer }
+            pending: { type: integer }
+            needs_revision: { type: integer }
+        overallStatus: { type: string }
+

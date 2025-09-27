@@ -1,0 +1,212 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ai-content-backend-monitor
+  namespace: ai-content-workflow
+  labels:
+    app: ai-content-backend
+    component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: ai-content-backend
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+    - ai-content-workflow
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ai-content-workflow-alerts
+  namespace: ai-content-workflow
+  labels:
+    app: ai-content-workflow
+    component: alerts
+spec:
+  groups:
+  - name: ai-content-backend.rules
+    rules:
+    - alert: AIContentBackendDown
+      expr: up{job="ai-content-backend-service"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: ai-content-backend
+      annotations:
+        summary: "AI Content Backend is down"
+        description: "AI Content Backend has been down for more than 1 minute"
+        runbook_url: "https://runbooks.example.com/ai-content-backend-down"
+    
+    - alert: AIContentBackendHighLatency
+      expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="ai-content-backend-service"}[5m])) by (le)) > 2
+      for: 5m
+      labels:
+        severity: warning
+        service: ai-content-backend
+      annotations:
+        summary: "High latency on AI Content Backend"
+        description: "95th percentile latency is above 2 seconds for 5 minutes"
+    
+    - alert: AIContentBackendHighErrorRate
+      expr: sum(rate(http_requests_total{job="ai-content-backend-service",status=~"5.."}[5m])) / sum(rate(http_requests_total{job="ai-content-backend-service"}[5m])) > 0.05
+      for: 2m
+      labels:
+        severity: warning
+        service: ai-content-backend
+      annotations:
+        summary: "High error rate on AI Content Backend"
+        description: "Error rate is above 5% for 2 minutes"
+    
+    - alert: AIContentBackendMemoryUsage
+      expr: (container_memory_usage_bytes{pod=~"ai-content-backend-.*"} / container_spec_memory_limit_bytes{pod=~"ai-content-backend-.*"}) * 100 > 90
+      for: 5m
+      labels:
+        severity: warning
+        service: ai-content-backend
+      annotations:
+        summary: "High memory usage on AI Content Backend"
+        description: "Memory usage is above 90% for 5 minutes"
+    
+    - alert: AIContentBackendCPUUsage
+      expr: (rate(container_cpu_usage_seconds_total{pod=~"ai-content-backend-.*"}[5m])) * 100 > 80
+      for: 10m
+      labels:
+        severity: warning
+        service: ai-content-backend
+      annotations:
+        summary: "High CPU usage on AI Content Backend"
+        description: "CPU usage is above 80% for 10 minutes"
+    
+    - alert: PostgresDatabaseDown
+      expr: up{job="postgres-service"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: postgres
+      annotations:
+        summary: "PostgreSQL database is down"
+        description: "PostgreSQL database has been down for more than 1 minute"
+    
+    - alert: PostgresConnectionsHigh
+      expr: pg_stat_database_numbackends{job="postgres-service"} > 80
+      for: 5m
+      labels:
+        severity: warning
+        service: postgres
+      annotations:
+        summary: "High number of PostgreSQL connections"
+        description: "PostgreSQL has more than 80 active connections"
+    
+    - alert: AIServiceResponseTime
+      expr: app_dependency_response_time_milliseconds{service=~"openai-api|anthropic-api"} > 10000
+      for: 3m
+      labels:
+        severity: warning
+        service: ai-services
+      annotations:
+        summary: "AI service response time is high"
+        description: "AI service {{ $labels.service }} response time is above 10 seconds"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-ai-content
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  ai-content-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "AI Content Workflow Dashboard",
+        "tags": ["ai-content", "application"],
+        "timezone": "browser",
+        "refresh": "30s",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "title": "Application Health",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "app_health_status{environment=\"production\"}",
+                "legendFormat": "Health Status"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "mappings": [
+                  {"options": {"0": {"text": "Unhealthy", "color": "red"}}, "type": "value"},
+                  {"options": {"1": {"text": "Degraded", "color": "yellow"}}, "type": "value"},
+                  {"options": {"2": {"text": "Healthy", "color": "green"}}, "type": "value"}
+                ]
+              }
+            }
+          },
+          {
+            "title": "Request Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{job=\"ai-content-backend-service\"}[5m]))",
+                "legendFormat": "Requests/sec"
+              }
+            ]
+          },
+          {
+            "title": "Response Times",
+            "type": "graph", 
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"ai-content-backend-service\"}[5m])) by (le))",
+                "legendFormat": "50th percentile"
+              },
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"ai-content-backend-service\"}[5m])) by (le))",
+                "legendFormat": "95th percentile"
+              }
+            ]
+          },
+          {
+            "title": "Database Performance",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "app_database_response_time_milliseconds",
+                "legendFormat": "DB Response Time (ms)"
+              }
+            ]
+          },
+          {
+            "title": "AI Service Performance",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "app_dependency_response_time_milliseconds{service=~\"openai-api|anthropic-api\"}",
+                "legendFormat": "{{ $labels.service }} Response Time"
+              }
+            ]
+          },
+          {
+            "title": "Memory Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "(app_memory_usage_bytes{type=\"heap_used\"} / app_memory_usage_bytes{type=\"heap_total\"}) * 100",
+                "legendFormat": "Heap Usage %"
+              }
+            ]
+          }
+        ]
+      }
+    }

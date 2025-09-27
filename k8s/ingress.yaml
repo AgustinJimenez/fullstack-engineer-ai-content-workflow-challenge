@@ -1,0 +1,178 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ai-content-workflow-ingress
+  namespace: ai-content-workflow
+  labels:
+    app: ai-content-workflow
+    component: ingress
+  annotations:
+    # Nginx Ingress Controller annotations
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/rate-limit-requests-per-second: "10"
+    nginx.ingress.kubernetes.io/rate-limit-burst-multiplier: "5"
+    
+    # CORS settings
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.example.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/server-snippet: |
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    
+    # Load balancing
+    nginx.ingress.kubernetes.io/load-balance: "round_robin"
+    
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    
+    # Request size limits
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    
+    # SSL/TLS configuration
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - app.example.com
+    - api.example.com
+    secretName: ai-content-workflow-tls
+  rules:
+  # Frontend application
+  - host: app.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ai-content-frontend-service
+            port:
+              number: 3000
+  
+  # Backend API
+  - host: api.example.com
+    http:
+      paths:
+      # REST API routes
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: ai-content-backend-service
+            port:
+              number: 8080
+      
+      # GraphQL endpoint
+      - path: /graphql
+        pathType: Prefix
+        backend:
+          service:
+            name: ai-content-backend-service
+            port:
+              number: 8080
+      
+      # Health and monitoring endpoints
+      - path: /health
+        pathType: Prefix
+        backend:
+          service:
+            name: ai-content-backend-service
+            port:
+              number: 8080
+      
+      - path: /metrics
+        pathType: Exact
+        backend:
+          service:
+            name: ai-content-backend-service
+            port:
+              number: 8080
+      
+      - path: /info
+        pathType: Exact
+        backend:
+          service:
+            name: ai-content-backend-service
+            port:
+              number: 8080
+
+---
+# Alternative ingress for development/staging with single domain
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ai-content-workflow-single-domain-ingress
+  namespace: ai-content-workflow
+  labels:
+    app: ai-content-workflow
+    component: ingress-single-domain
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - staging.example.com
+    secretName: ai-content-workflow-staging-tls
+  rules:
+  - host: staging.example.com
+    http:
+      paths:
+      # Backend API routes (higher priority)
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: ai-content-backend-service
+            port:
+              number: 8080
+      
+      - path: /graphql
+        pathType: Prefix
+        backend:
+          service:
+            name: ai-content-backend-service
+            port:
+              number: 8080
+      
+      - path: /health
+        pathType: Prefix
+        backend:
+          service:
+            name: ai-content-backend-service
+            port:
+              number: 8080
+      
+      - path: /metrics
+        pathType: Exact
+        backend:
+          service:
+            name: ai-content-backend-service
+            port:
+              number: 8080
+      
+      # Frontend routes (catch-all, lower priority)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ai-content-frontend-service
+            port:
+              number: 3000

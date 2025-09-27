@@ -1,129 +1,302 @@
-# 🚀 Fullstack Engineer Challenge – AI Content Workflow
+# AI Content Workflow System
 
-Welcome to the **Fullstack Engineer Challenge!** 🤖📝  
-In this challenge, you'll help the fictional company **ACME GLOBAL MEDIA** build a system to manage the **content creation and review workflow** for their international campaigns — powered by **AI**.
+A full-stack AI-powered content management system for creating, translating, and reviewing marketing content across multiple languages and campaigns.
 
-## 🎯 Context
+## 🚀 Features
 
-ACME GLOBAL MEDIA produces ads, micro-sites, and marketing materials in multiple languages.  
-Traditionally, creating and translating this content is slow and error-prone. They want to experiment with **LLMs** to:
+- **Campaign Management**: Create and manage marketing campaigns with multiple content pieces
+- **AI Content Generation**: Generate compelling content using AI (provider-agnostic system)
+- **Multi-language Support**: Automatic translation and localization to multiple target languages  
+- **Content Analysis**: AI-powered analysis for keywords, tone, and sentiment
+- **Review Workflow**: Human-in-the-loop approval process (draft → AI generated → review → approved/rejected)
+- **Real-time Updates**: Live updates across all users using Server-Sent Events
+- **Advanced Filtering**: Filter content by status, tone, sentiment, and keywords
+- **Responsive UI**: Modern React interface with shadcn/ui components
 
-- Generate initial content drafts (headlines, product descriptions, etc.).
-- Translate and localize content into multiple languages.
-- Extract structured data (keywords, tone, sentiment).
-- Keep a **review workflow** where humans can accept, edit, or reject AI suggestions.
+## 🛠 Tech Stack
 
-Your task is to build a simple system to:
+### Backend
+- **Language**: TypeScript
+- **Framework**: Express.js with Sequelize ORM
+- **Database**: PostgreSQL
+- **AI Integration**: Unified system supporting OpenAI and Anthropic
+- **Real-time**: Server-Sent Events (SSE)
+- **API**: RESTful API architecture
 
-- Manage **campaigns** (each with multiple content pieces).
-- Generate **AI-powered drafts** for a content piece using OpenAI or Anthropic.
-- Provide **translation/localization** suggestions via AI.
-- Track a **review state** (Draft → Suggested by AI → Reviewed → Approved/Rejected).
-- Show updates to all users in real-time.
+### Frontend  
+- **Framework**: Next.js 14 (React)
+- **UI Components**: shadcn/ui with Tailwind CSS
+- **State Management**: React hooks and context
+- **Testing**: Playwright for E2E testing
 
-## 📌 Requirements
+### Infrastructure
+- **Containerization**: Docker with docker-compose
+- **Database**: PostgreSQL with automated migrations
+- **Environment**: Configurable for development, testing, and production
 
-### ⚙️ Tech Stack
+## 🚀 Quick Start
 
-> ⚡ **Must Include** - Use the following technologies, aligned with our tech stack:
+### Prerequisites
+- Docker and Docker Compose
+- Node.js 18+ (for development)
+- AI API key (OpenAI or Anthropic)
 
-- **Backend:** You can use any stack you're comfortable with, but we recommend:
-  - TypeScript + NestJS (Fastify/Koa also valid)  
-  - Python + FastAPI (Flask/Django also valid)  
-  - Go + Fiber (Gin/Echo also valid)  
-- **API:** REST and/or GraphQL (justify your choice if only one)  
-- **Frontend:** React (Next.js, Remix, or Vite)  
-- **Database:** PostgreSQL (primary), MongoDB (optional if needed)  
-- **Containerization:** Docker (required)  
-- **AI Integrations:** OpenAI and/or Anthropic SDKs (required)  
-- **Bonus:** LangChain, Kafka, Redis, ArgoCD, Kubernetes  
-
-### 📦 Deliverables
-
-> 📥 **Your submission must be a Pull Request that includes:**
-
-- A **backend API** that supports:
-  - Creating a campaign and its content pieces.
-  - Generating AI drafts (titles, descriptions, translations).
-  - Updating the review state of content.
-  - Querying campaigns with their content and review states.
-- A **frontend built with React** to:
-  - Display a campaign dashboard.
-  - Trigger AI draft generation.
-  - Provide UI to review/edit/approve/reject drafts.
-  - Show updates in real-time.
-- Docker setup to run the entire app locally.
-- A `README.md` with:
-  - Setup instructions.
-  - Tech decisions and tradeoffs.
-  - If applicable, reasoning for REST, GraphQL, or both.
-- A `docs/` folder for any diagrams, workflows, or extra notes.
-
-### 📂 Suggested Folder Structure
-
-```txt
-/
-├── .github/
-│   ├── workflows/
-│   └── PULL_REQUEST_TEMPLATE.md
-├── docs/
-├── backend/
-│   ├── src/
-│   ├── test/
-│   └── Dockerfile
-├── frontend/
-│   ├── src/
-│   ├── public/
-│   └── Dockerfile
-├── compose.yml
-├── .env.example
-├── README.md
-├── .prettierrc.js
-├── eslint.config.mjs
-└── ...
-````
-
-## 🌟 Nice to Have
-
-> 💡 **Bonus Points For:**
-
-* Using **LangChain** to chain AI tasks (generate → translate → summarize).
-* Supporting **multi-model comparison** (OpenAI vs Anthropic).
-* Real-time features with WebSockets, GraphQL Subscriptions, or SSE.
-* Automated testing & GitHub Actions CI pipeline.
-* Unit/integration tests for API or AI-related logic.
-* Using Redis/Kafka for async event messaging.
-* Deploy manifests for Kubernetes or ArgoCD.
-
-## 🧪 Submission Guidelines
-
-1. **Fork this repository.**
-2. **Create a feature branch** for your implementation.
-3. **Commit your changes** with meaningful commit messages.
-4. **Open a Pull Request** following the provided template.
-5. **Our team will review** and provide feedback.
-
-## ✅ Evaluation Criteria
-
-> 🔍 **What we'll be looking at:**
-
-* Ability to work **across the stack** (NestJS/FastAPI/Go + PostgreSQL + React).
-* Integration of **AI features** in a clean, modular way.
-* Clear **data modeling** and workflow management.
-* **Human-in-the-loop UX** for reviewing AI content.
-* Documentation of assumptions, tradeoffs, and AI design choices.
-* Creativity in using AI to enhance the workflow.
-
-## 💬 Final Notes
-
-This challenge is designed to be **flexible**. Some tips:
-
-* If you’re stronger in backend, focus there but add a simple UI.
-* If you’re stronger in frontend, ensure your backend has clean APIs.
-* Time-box your work — we want to see **how you think and solve problems**, not perfection.
-* Surprise us with creative uses of AI! 🎉
-
-## 🏁 Good luck and have fun building!
-
-
+### 1. Clone the Repository
+```bash
+git clone <repository-url>
+cd fullstack-engineer-ai-content-workflow-challenge
 ```
+
+### 2. Environment Setup
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Configure your AI settings in .env
+AI_PROVIDER=openai          # or 'anthropic'
+AI_API_KEY=your_api_key_here
+```
+
+### 3. Start the Application
+```bash
+# Start all services (database, backend, frontend)
+docker-compose up --build
+
+# Or start in detached mode
+docker-compose up --build -d
+```
+
+### 4. Access the Application
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8080
+- **Database**: PostgreSQL on localhost:5432
+
+### 5. First Steps
+1. Open http://localhost:3000 in your browser
+2. Click "Create Campaign" to create your first campaign
+3. Add content pieces and generate AI content
+4. Follow the [How to Use Guide](docs/HOW_TO_USE.md) for detailed instructions
+
+## 📚 Documentation
+
+- **[How to Use Guide](docs/HOW_TO_USE.md)** - Complete user guide with examples
+- **[API Documentation](docs/API.md)** - REST API endpoints and examples
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - System design and architecture
+- **[Development Guide](docs/DEVELOPMENT.md)** - Development setup and workflows
+- **[Testing Guide](docs/TESTING.md)** - Testing strategies and commands
+
+## 🔧 Development
+
+### Local Development Setup
+```bash
+# Install dependencies
+npm install
+
+# Start database
+docker-compose up postgres -d
+
+# Start backend (development mode)
+cd backend
+npm run dev
+
+# Start frontend (development mode)  
+cd frontend
+npm run dev
+```
+
+### Running Tests
+```bash
+# E2E tests with Docker
+npm run test:e2e:docker
+
+# E2E tests locally (requires services running)
+npm run test:e2e
+
+# Backend unit tests
+cd backend && npm test
+
+# Frontend component tests
+cd frontend && npm test
+```
+
+### Database Management
+```bash
+# Reset database (development)
+./scripts/manage-db.sh reset
+
+# Run migrations
+./scripts/manage-db.sh migrate
+
+# Check database status
+./scripts/manage-db.sh status
+```
+
+## 🎯 AI Integration Design
+
+### Unified AI Provider System
+Our AI integration uses a **provider-agnostic architecture**:
+
+**Why This Approach?**
+- **Flexibility**: Easy to switch between OpenAI and Anthropic
+- **Cost Optimization**: Choose the best provider for different use cases
+- **Risk Mitigation**: Not dependent on a single AI provider
+- **Future-Proof**: Easy to add new providers (Google, Cohere, etc.)
+
+**Configuration**:
+```bash
+AI_PROVIDER=openai    # or 'anthropic'
+AI_API_KEY=your_key   # unified key configuration
+```
+
+**Benefits**:
+- Single configuration point
+- Provider-specific optimizations handled automatically
+- Consistent API interface regardless of provider
+- Fallback and error handling per provider
+
+### AI Features Implemented
+
+1. **Content Generation**
+   - Context-aware content creation
+   - Content type-specific prompting (headlines, descriptions, CTAs)
+   - Maintains brand voice and style
+
+2. **Translation & Localization**
+   - Automatic translation to target languages
+   - Quality scoring for translations
+   - Language-specific content review
+
+3. **Content Analysis**
+   - Keyword extraction
+   - Tone detection (professional, casual, enthusiastic, etc.)
+   - Sentiment analysis with confidence scores
+   - Structured data extraction
+
+4. **Human-in-the-Loop Workflow**
+   - AI suggestions require human approval
+   - Review process with feedback tracking
+   - Per-language review capabilities
+
+## 🏗 Architecture Decisions
+
+### REST API Choice
+**Why REST over GraphQL?**
+- **Simplicity**: Straightforward endpoint design for CRUD operations
+- **Caching**: Better HTTP caching for campaign and content data
+- **Real-time**: SSE integrates naturally with REST endpoints
+- **Tooling**: Extensive ecosystem and testing tools
+
+**API Design Principles**:
+- Resource-based URLs (`/api/v1/campaigns/{id}/content`)
+- Consistent HTTP status codes
+- Comprehensive error handling
+- Pagination for large datasets
+
+### Database Design
+**PostgreSQL Choice**:
+- **ACID Compliance**: Critical for content workflow integrity
+- **JSON Support**: Flexible metadata storage for AI analysis
+- **Performance**: Excellent for complex queries and filtering
+- **Scaling**: Proven at enterprise scale
+
+**Key Design Decisions**:
+- Separate tables for campaigns, content, AI generations, and reviews
+- JSON metadata for flexible AI analysis data
+- Proper foreign key relationships
+- Migration-based schema evolution
+
+### Real-time Updates
+**Server-Sent Events (SSE) over WebSockets**:
+- **Simplicity**: One-way communication fits our use case
+- **Reliability**: Automatic reconnection and error handling
+- **HTTP-Friendly**: Works with standard web infrastructure
+- **Resource Efficient**: Lower overhead than WebSockets
+
+## 🧪 Testing Strategy
+
+### End-to-End Testing
+- **Framework**: Playwright for cross-browser testing
+- **Coverage**: Full user workflows from campaign creation to approval
+- **Environment**: Dockerized test environment with real database
+- **AI Testing**: Fake AI responses for consistent testing
+
+### Test Categories
+1. **Campaign Management**: Create, edit, delete campaigns
+2. **Content Workflow**: Complete content lifecycle testing
+3. **AI Integration**: AI generation, translation, and analysis
+4. **Real-time Features**: SSE event handling
+5. **UI Components**: Interactive elements and forms
+
+## 🚀 Deployment
+
+### Docker Production Setup
+```bash
+# Production build
+docker-compose -f compose.yml -f compose.prod.yml up --build
+
+# With environment overrides
+AI_PROVIDER=anthropic AI_API_KEY=prod_key docker-compose up --build
+```
+
+### Environment Variables
+```bash
+# Required
+AI_PROVIDER=openai|anthropic
+AI_API_KEY=your_api_key
+
+# Optional
+DATABASE_URL=postgresql://...
+NODE_ENV=production
+NEXT_PUBLIC_API_URL=https://your-api-domain.com
+```
+
+## 🔍 Monitoring and Debugging
+
+### Health Checks
+- **Backend**: `GET /api/health` - Database and AI provider status
+- **Database**: Connection pooling and query monitoring
+- **AI Providers**: Rate limiting and error tracking
+
+### Logging
+- Structured logging with request tracing
+- AI API call monitoring and error tracking
+- Performance metrics for database queries
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Run tests (`npm run test:e2e:docker`)
+4. Commit changes (`git commit -m 'Add amazing feature'`)
+5. Push to branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+## 📈 Performance Considerations
+
+- **Database Indexing**: Optimized queries for campaigns and content
+- **Pagination**: Efficient handling of large datasets
+- **Caching**: HTTP caching for static content
+- **AI Rate Limiting**: Respect provider rate limits
+- **Lazy Loading**: Content loaded on demand
+
+## 🔒 Security
+
+- **Input Validation**: All user inputs validated and sanitized
+- **API Keys**: Secure environment variable handling
+- **CORS**: Configured for production domains
+- **SQL Injection**: Parameterized queries with Sequelize ORM
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 🎯 Quick Links
+
+- **[User Guide](docs/HOW_TO_USE.md)** - Start here if you're new to the system
+- **[API Docs](docs/API.md)** - Complete API reference
+- **[Architecture](docs/ARCHITECTURE.md)** - Technical deep dive
+- **[Original Requirements](README.OLD.md)** - Challenge specifications
+
+Built with ❤️ for ACME GLOBAL MEDIA's content workflow needs.

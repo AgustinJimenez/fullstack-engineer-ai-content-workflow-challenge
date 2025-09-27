@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Test outputs
+test-results/
+playwright-report/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+*.log
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo

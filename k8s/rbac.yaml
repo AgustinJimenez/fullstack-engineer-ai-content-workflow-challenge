@@ -1,0 +1,141 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ai-content-backend-role
+  namespace: ai-content-workflow
+  labels:
+    app: ai-content-backend
+    component: rbac
+rules:
+# Allow reading ConfigMaps and Secrets for configuration
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+
+# Allow reading service information for service discovery
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "watch"]
+
+# Allow reading pods for health checks and monitoring
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+
+# Allow creating/updating events for logging
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ai-content-backend-rolebinding
+  namespace: ai-content-workflow
+  labels:
+    app: ai-content-backend
+    component: rbac
+subjects:
+- kind: ServiceAccount
+  name: ai-content-backend-sa
+  namespace: ai-content-workflow
+roleRef:
+  kind: Role
+  name: ai-content-backend-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-content-frontend-sa
+  namespace: ai-content-workflow
+  labels:
+    app: ai-content-frontend
+    component: serviceaccount
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ai-content-frontend-role
+  namespace: ai-content-workflow
+  labels:
+    app: ai-content-frontend
+    component: rbac
+rules:
+# Minimal permissions for frontend
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+  resourceNames: ["ai-content-frontend-config"]  # Restrict to specific ConfigMap
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ai-content-frontend-rolebinding
+  namespace: ai-content-workflow
+  labels:
+    app: ai-content-frontend
+    component: rbac
+subjects:
+- kind: ServiceAccount
+  name: ai-content-frontend-sa
+  namespace: ai-content-workflow
+roleRef:
+  kind: Role
+  name: ai-content-frontend-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Pod Security Standards
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: ai-content-workflow-limits
+  namespace: ai-content-workflow
+  labels:
+    app: ai-content-workflow
+    component: security
+spec:
+  limits:
+  - default:
+      cpu: "500m"
+      memory: "512Mi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "128Mi"
+    type: Container
+  - max:
+      cpu: "2"
+      memory: "4Gi"
+    min:
+      cpu: "50m"
+      memory: "64Mi"
+    type: Container
+  - max:
+      storage: "50Gi"
+    type: PersistentVolumeClaim
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ai-content-workflow-quota
+  namespace: ai-content-workflow
+  labels:
+    app: ai-content-workflow
+    component: quota
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    persistentvolumeclaims: "5"
+    pods: "20"
+    services: "10"
+    secrets: "10"
+    configmaps: "10"

@@ -1,0 +1,89 @@
+services:
+  db:
+    image: postgres:15
+    container_name: ai-content-db
+    environment:
+      POSTGRES_DB: ai_content_workflow
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - ai-content-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-content-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ai-content-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai-content-backend
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=ai_content_workflow
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - REDIS_URL=redis://redis:6379
+      - FRONTEND_URL=http://localhost:3000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - USE_FAKE_AI=${USE_FAKE_AI:-true}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+      - redis
+    networks:
+      - ai-content-network
+    restart: unless-stopped
+    # Development volumes for hot-reload
+    volumes:
+      - ./backend:/app
+      - /app/node_modules  # Prevent overwriting node_modules
+      - /app/dist  # Prevent overwriting build folder
+    command: npm run dev  # Uses ts-node-dev for hot reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai-content-frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - NEXT_INTERNAL_API_URL=http://backend:8080
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true  # Enable file watching in Docker
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - ai-content-network
+    restart: unless-stopped
+    # Development volumes for hot-reload
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Prevent overwriting node_modules
+      - /app/.next  # Prevent overwriting .next build folder
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ai-content-network:
+    driver: bridge
