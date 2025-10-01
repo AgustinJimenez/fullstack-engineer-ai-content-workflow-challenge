@@ -3,13 +3,13 @@ import { AIController } from '../../src/controllers/aiController';
 import { ContentPiece } from '../../src/models/ContentPiece';
 import { AIGeneration } from '../../src/models/AIGeneration';
 import { Translation } from '../../src/models/Translation';
-import { eventBus } from '../../src/events/eventBus';
+import { redisEventBus as eventBus } from '../../src/events/redisEventBus';
 
 // Mock dependencies
 jest.mock('../../src/models/ContentPiece');
 jest.mock('../../src/models/AIGeneration');
 jest.mock('../../src/models/Translation');
-jest.mock('../../src/events/eventBus');
+jest.mock('../../src/events/redisEventBus');
 
 describe('AIController Unit Tests', () => {
   let aiController: AIController;
@@ -33,7 +33,7 @@ describe('AIController Unit Tests', () => {
     aiController = new AIController();
 
     // Mock environment variables for unified AI system
-    process.env.USE_FAKE_AI = 'true';
+    process.env.NODE_ENV = 'test';
     process.env.AI_PROVIDER = 'openai';
   });
 
@@ -46,7 +46,7 @@ describe('AIController Unit Tests', () => {
       
       // Reset environment variables
       process.env.AI_PROVIDER = 'openai';
-      process.env.USE_FAKE_AI = 'true';
+      process.env.NODE_ENV = 'test';
     });
 
     it('should generate content successfully with unified AI system', async () => {
@@ -64,21 +64,22 @@ describe('AIController Unit Tests', () => {
       const mockGeneration = {
         id: 789,
         contentPieceId: 123,
-        aiModel: 'openai',
-        modelVersion: 'gpt-4',
+        aiModel: 'fake',
+        modelVersion: 'fake-simulation',
         promptUsed: 'Test prompt',
-        generatedText: 'AI-Generated: Original content — Compelling & Engaging!',
+        generatedText: 'AI-Generated (fake): Original content — Compelling & Engaging!',
         metadata: {
           timestamp: expect.any(String),
           contentType: 'headline',
+          selectedProvider: 'fake',
         },
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
       };
       (AIGeneration.create as jest.Mock).mockResolvedValue(mockGeneration);
 
-      // Mock eventBus
-      (eventBus.emitEvent as jest.Mock) = jest.fn();
+      // Mock eventBus to return a promise
+      (eventBus.emitEvent as jest.Mock).mockResolvedValue(undefined);
 
       await aiController.generateContent(mockRequest as Request, mockResponse as Response);
 
@@ -86,13 +87,14 @@ describe('AIController Unit Tests', () => {
       expect(ContentPiece.findByPk).toHaveBeenCalledWith(123);
       expect(AIGeneration.create).toHaveBeenCalledWith({
         contentPieceId: 123,
-        aiModel: 'openai',
-        modelVersion: 'gpt-4',
+        aiModel: 'fake',
+        modelVersion: 'fake-simulation',
         promptUsed: 'Test prompt',
-        generatedText: 'AI-Generated: Original content — Compelling & Engaging!',
+        generatedText: 'AI-Generated (fake): Original content — Compelling & Engaging!',
         metadata: {
           timestamp: expect.any(String),
           contentType: 'headline',
+          selectedProvider: 'fake',
         },
       });
       expect(mockContentPiece.update).toHaveBeenCalledWith({ status: 'ai_generated' });
@@ -156,6 +158,9 @@ describe('AIController Unit Tests', () => {
         promptUsed: null,
       };
       (AIGeneration.create as jest.Mock).mockResolvedValue(mockGeneration);
+      
+      // Mock eventBus to return a promise
+      (eventBus.emitEvent as jest.Mock).mockResolvedValue(undefined);
 
       await aiController.generateContent(mockRequest as Request, mockResponse as Response);
 
@@ -168,8 +173,7 @@ describe('AIController Unit Tests', () => {
     });
 
     it('should handle different AI providers', async () => {
-      // The AI provider is determined at module load time, so we need to test
-      // that the controller uses the configured provider correctly
+      // When NODE_ENV is test, fake provider is always used
       const mockContentPiece = {
         id: 123,
         originalContent: 'Original content',
@@ -181,8 +185,8 @@ describe('AIController Unit Tests', () => {
 
       const mockGeneration = {
         id: 789,
-        aiModel: expect.stringMatching(/^(openai|anthropic)$/),
-        modelVersion: expect.stringMatching(/^(gpt-4|claude-3)$/),
+        aiModel: 'fake',
+        modelVersion: 'fake-simulation',
       };
       (AIGeneration.create as jest.Mock).mockResolvedValue(mockGeneration);
 
@@ -190,8 +194,8 @@ describe('AIController Unit Tests', () => {
 
       expect(AIGeneration.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          aiModel: expect.stringMatching(/^(openai|anthropic)$/),
-          modelVersion: expect.stringMatching(/^(gpt-4|claude-3)$/),
+          aiModel: 'fake',
+          modelVersion: 'fake-simulation',
         })
       );
       expect(responseStatus).toHaveBeenCalledWith(201);
@@ -225,6 +229,9 @@ describe('AIController Unit Tests', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       };
       (Translation.create as jest.Mock).mockResolvedValue(mockTranslation);
+      
+      // Mock eventBus.emitEvent to return a promise
+      (eventBus.emitEvent as jest.Mock).mockResolvedValue(undefined);
 
       await aiController.translateContent(mockRequest as Request, mockResponse as Response);
 
@@ -280,6 +287,9 @@ describe('AIController Unit Tests', () => {
           translatedText: `[${lang.toUpperCase()} Translation]: Hello world`,
         };
         (Translation.create as jest.Mock).mockResolvedValue(mockTranslation);
+        
+        // Mock eventBus to return a promise
+        (eventBus.emitEvent as jest.Mock).mockResolvedValue(undefined);
 
         await aiController.translateContent(mockRequest as Request, mockResponse as Response);
 
@@ -322,6 +332,9 @@ describe('AIController Unit Tests', () => {
         },
       };
       (AIGeneration.create as jest.Mock).mockResolvedValue(mockAnalysis);
+      
+      // Mock eventBus.emitEvent to return a promise
+      (eventBus.emitEvent as jest.Mock).mockResolvedValue(undefined);
 
       await aiController.analyzeContent(mockRequest as Request, mockResponse as Response);
 
@@ -381,6 +394,9 @@ describe('AIController Unit Tests', () => {
         metadata: { targetId: 456 },
       };
       (AIGeneration.create as jest.Mock).mockResolvedValue(mockAnalysis);
+      
+      // Mock eventBus to return a promise
+      (eventBus.emitEvent as jest.Mock).mockResolvedValue(undefined);
 
       await aiController.analyzeContent(mockRequest as Request, mockResponse as Response);
 
@@ -523,6 +539,7 @@ describe('AIController Unit Tests', () => {
 
   describe('AI Provider Configuration', () => {
     it('should use configured AI provider', async () => {
+      // In test mode, always uses fake provider
       mockRequest = {
         params: { contentId: '123' },
         body: { prompt: 'Test prompt' },
@@ -539,23 +556,26 @@ describe('AIController Unit Tests', () => {
 
       const mockGeneration = {
         id: 789,
-        aiModel: expect.stringMatching(/^(openai|anthropic)$/),
-        modelVersion: expect.stringMatching(/^(gpt-4|claude-3)$/),
+        aiModel: 'fake',
+        modelVersion: 'fake-simulation',
       };
       (AIGeneration.create as jest.Mock).mockResolvedValue(mockGeneration);
+      
+      // Mock eventBus.emitEvent to return a promise
+      (eventBus.emitEvent as jest.Mock).mockResolvedValue(undefined);
 
       await aiController.generateContent(mockRequest as Request, mockResponse as Response);
 
       expect(AIGeneration.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          aiModel: expect.stringMatching(/^(openai|anthropic)$/),
-          modelVersion: expect.stringMatching(/^(gpt-4|claude-3)$/),
+          aiModel: 'fake',
+          modelVersion: 'fake-simulation',
         })
       );
     });
 
-    it('should use simulation mode when USE_FAKE_AI is true', async () => {
-      process.env.USE_FAKE_AI = 'true';
+    it('should use simulation mode when in test environment', async () => {
+      process.env.NODE_ENV = 'test';
 
       mockRequest = {
         params: { contentId: '123' },
@@ -573,16 +593,21 @@ describe('AIController Unit Tests', () => {
 
       const mockGeneration = {
         id: 789,
-        generatedText: 'AI-Generated: Original content — Compelling & Engaging!',
+        generatedText: 'AI-Generated (fake): Original content — Compelling & Engaging!',
       };
       (AIGeneration.create as jest.Mock).mockResolvedValue(mockGeneration);
+      
+      // Mock eventBus.emitEvent to return a promise
+      (eventBus.emitEvent as jest.Mock).mockResolvedValue(undefined);
 
       await aiController.generateContent(mockRequest as Request, mockResponse as Response);
 
-      // Should use simulated AI generation
+      // Should use simulated AI generation with fake provider
       expect(AIGeneration.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          generatedText: 'AI-Generated: Original content — Compelling & Engaging!',
+          generatedText: 'AI-Generated (fake): Original content — Compelling & Engaging!',
+          aiModel: 'fake',
+          modelVersion: 'fake-simulation',
         })
       );
     });

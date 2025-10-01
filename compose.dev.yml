@@ -25,6 +25,26 @@ services:
       - ai-content-network
     restart: unless-stopped
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-content-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ai-content-network
+    restart: unless-stopped
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    command: serve
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
   backend:
     build:
       context: ./backend
@@ -40,22 +60,26 @@ services:
       - DB_PASS=postgres
       - REDIS_URL=redis://redis:6379
       - FRONTEND_URL=http://localhost:3000
+      - AI_PROVIDER=${AI_PROVIDER:-ollama}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - USE_FAKE_AI=${USE_FAKE_AI:-true}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-phi4-mini:latest}
     ports:
       - "8080:8080"
     depends_on:
       - db
       - redis
+      - ollama
     networks:
       - ai-content-network
     restart: unless-stopped
     # Development volumes for hot-reload
     volumes:
       - ./backend:/app
-      - /app/node_modules  # Prevent overwriting node_modules
-      - /app/dist  # Prevent overwriting build folder
-    command: npm run dev  # Uses ts-node-dev for hot reload
+      - /app/node_modules # Prevent overwriting node_modules
+      - /app/dist # Prevent overwriting build folder
+    command: npm run dev # Uses ts-node-dev for hot reload
 
   frontend:
     build:
@@ -66,7 +90,7 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8080
       - NEXT_INTERNAL_API_URL=http://backend:8080
       - NODE_ENV=development
-      - WATCHPACK_POLLING=true  # Enable file watching in Docker
+      - WATCHPACK_POLLING=true # Enable file watching in Docker
     ports:
       - "3000:3000"
     depends_on:
@@ -77,12 +101,13 @@ services:
     # Development volumes for hot-reload
     volumes:
       - ./frontend:/app
-      - /app/node_modules  # Prevent overwriting node_modules
-      - /app/.next  # Prevent overwriting .next build folder
+      - /app/node_modules # Prevent overwriting node_modules
+      - /app/.next # Prevent overwriting .next build folder
 
 volumes:
   postgres_data:
   redis_data:
+  ollama_data:
 
 networks:
   ai-content-network:

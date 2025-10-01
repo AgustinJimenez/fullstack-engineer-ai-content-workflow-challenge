@@ -4,6 +4,7 @@ import { ContentPiece } from '../../models/ContentPiece';
 import { CampaignType } from '../types/CampaignType';
 import { ContentPieceType } from '../types/ContentPieceType';
 import { CreateCampaignInput } from '../inputs/CreateCampaignInput';
+import { publishCampaignCreated, publishCampaignUpdated, publishCampaignDeleted } from './SubscriptionResolver';
 
 @Resolver(() => CampaignType)
 export class CampaignResolver {
@@ -33,13 +34,18 @@ export class CampaignResolver {
 
   @Mutation(() => CampaignType)
   async createCampaign(@Arg('data') data: CreateCampaignInput): Promise<Campaign> {
-    return Campaign.create({
+    const campaign = await Campaign.create({
       name: data.name,
       description: data.description,
       status: data.status || 'active',
       defaultLanguage: data.defaultLanguage || 'en',
       targetLanguages: data.targetLanguages || []
     });
+
+    // Publish subscription event
+    await publishCampaignCreated(campaign.toJSON());
+
+    return campaign;
   }
 
   @Mutation(() => CampaignType, { nullable: true })
@@ -58,6 +64,9 @@ export class CampaignResolver {
       targetLanguages: data.targetLanguages
     });
 
+    // Publish subscription event
+    await publishCampaignUpdated(campaign.toJSON());
+
     return campaign;
   }
 
@@ -67,6 +76,10 @@ export class CampaignResolver {
     if (!campaign) return false;
 
     await campaign.destroy();
+
+    // Publish subscription event
+    await publishCampaignDeleted(id);
+
     return true;
   }
 

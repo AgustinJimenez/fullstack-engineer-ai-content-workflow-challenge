@@ -12,14 +12,16 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { FilterIcon, XIcon, ChevronUpIcon, ChevronDownIcon } from 'lucide-react';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 export interface CampaignFilterValues {
-  status?: string;
-  contentStatus?: string;
-  contentType?: string;
+  status?: string | string[];
+  contentStatus?: string | string[];
+  contentType?: string | string[];
   hasAIContent?: string;
   hasTranslations?: string;
-  language?: string;
+  defaultLanguage?: string | string[];
+  targetLanguages?: string | string[];
 }
 
 interface CampaignFiltersProps {
@@ -38,6 +40,22 @@ export default function CampaignFilters({ filters, onFiltersChange }: CampaignFi
       newFilters[key] = value;
     }
     onFiltersChange(newFilters);
+  };
+
+  const handleMultiFilterChange = (key: keyof CampaignFilterValues, values: string[]) => {
+    const newFilters = { ...filters };
+    if (values.length === 0) {
+      delete newFilters[key];
+    } else {
+      (newFilters as any)[key] = values;
+    }
+    onFiltersChange(newFilters);
+  };
+
+  const getSelectedValues = (key: keyof CampaignFilterValues): string[] => {
+    const value = filters[key];
+    if (!value) return [];
+    return Array.isArray(value) ? value : [value];
   };
 
   const clearAllFilters = () => {
@@ -91,64 +109,58 @@ export default function CampaignFilters({ filters, onFiltersChange }: CampaignFi
               <Label htmlFor="filter-status" className="text-sm font-medium mb-2 block">
                 Campaign Status
               </Label>
-              <Select
-                value={filters.status || 'all'}
-                onValueChange={(value) => handleFilterChange('status', value)}
-              >
-                <SelectTrigger id="filter-status" data-testid="filter-status">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="paused">Paused</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={[
+                  { label: 'Active', value: 'active' },
+                  { label: 'Paused', value: 'paused' },
+                  { label: 'Completed', value: 'completed' },
+                ]}
+                selected={getSelectedValues('status')}
+                onChange={(values) => handleMultiFilterChange('status', values)}
+                placeholder="All statuses"
+                className="w-full"
+                data-testid="filter-status"
+              />
             </div>
 
             <div>
               <Label htmlFor="filter-content-status" className="text-sm font-medium mb-2 block">
                 Content Review Status
               </Label>
-              <Select
-                value={filters.contentStatus || 'all'}
-                onValueChange={(value) => handleFilterChange('contentStatus', value)}
-              >
-                <SelectTrigger id="filter-content-status" data-testid="filter-content-status">
-                  <SelectValue placeholder="All review states" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Review States</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="ai_generated">AI Generated</SelectItem>
-                  <SelectItem value="under_review">Under Review</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={[
+                  { label: 'Draft', value: 'draft' },
+                  { label: 'AI Generated', value: 'ai_generated' },
+                  { label: 'Under Review', value: 'under_review' },
+                  { label: 'Approved', value: 'approved' },
+                  { label: 'Rejected', value: 'rejected' },
+                ]}
+                selected={getSelectedValues('contentStatus')}
+                onChange={(values) => handleMultiFilterChange('contentStatus', values)}
+                placeholder="All review states"
+                className="w-full"
+                data-testid="filter-content-status"
+              />
             </div>
 
             <div>
               <Label htmlFor="filter-content-type" className="text-sm font-medium mb-2 block">
                 Content Type
               </Label>
-              <Select
-                value={filters.contentType || 'all'}
-                onValueChange={(value) => handleFilterChange('contentType', value)}
-              >
-                <SelectTrigger id="filter-content-type" data-testid="filter-content-type">
-                  <SelectValue placeholder="All types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="headline">Headline</SelectItem>
-                  <SelectItem value="description">Description</SelectItem>
-                  <SelectItem value="body_content">Body Content</SelectItem>
-                  <SelectItem value="cta">Call to Action</SelectItem>
-                  <SelectItem value="social_post">Social Post</SelectItem>
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={[
+                  { label: 'Headline', value: 'headline' },
+                  { label: 'Description', value: 'description' },
+                  { label: 'Body Content', value: 'body_content' },
+                  { label: 'Call to Action', value: 'cta' },
+                  { label: 'Social Post', value: 'social_post' },
+                ]}
+                selected={getSelectedValues('contentType')}
+                onChange={(values) => handleMultiFilterChange('contentType', values)}
+                placeholder="All types"
+                className="w-full"
+                data-testid="filter-content-type"
+              />
             </div>
 
             <div>
@@ -188,28 +200,49 @@ export default function CampaignFilters({ filters, onFiltersChange }: CampaignFi
             </div>
 
             <div>
-              <Label htmlFor="filter-language" className="text-sm font-medium mb-2 block">
-                Language
+              <Label htmlFor="filter-default-language" className="text-sm font-medium mb-2 block">
+                Default Language
               </Label>
-              <Select
-                value={filters.language || 'all'}
-                onValueChange={(value) => handleFilterChange('language', value)}
-              >
-                <SelectTrigger id="filter-language" data-testid="filter-language">
-                  <SelectValue placeholder="All languages" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Languages</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="es">Spanish</SelectItem>
-                  <SelectItem value="fr">French</SelectItem>
-                  <SelectItem value="de">German</SelectItem>
-                  <SelectItem value="it">Italian</SelectItem>
-                  <SelectItem value="pt">Portuguese</SelectItem>
-                  <SelectItem value="ja">Japanese</SelectItem>
-                  <SelectItem value="zh">Chinese</SelectItem>
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={[
+                  { label: 'English', value: 'en' },
+                  { label: 'Spanish', value: 'es' },
+                  { label: 'French', value: 'fr' },
+                  { label: 'German', value: 'de' },
+                  { label: 'Italian', value: 'it' },
+                  { label: 'Portuguese', value: 'pt' },
+                  { label: 'Japanese', value: 'ja' },
+                  { label: 'Chinese', value: 'zh' },
+                ]}
+                selected={getSelectedValues('defaultLanguage')}
+                onChange={(values) => handleMultiFilterChange('defaultLanguage', values)}
+                placeholder="All languages"
+                className="w-full"
+                data-testid="filter-default-language"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="filter-target-languages" className="text-sm font-medium mb-2 block">
+                Target Languages
+              </Label>
+              <MultiSelect
+                options={[
+                  { label: 'English', value: 'en' },
+                  { label: 'Spanish', value: 'es' },
+                  { label: 'French', value: 'fr' },
+                  { label: 'German', value: 'de' },
+                  { label: 'Italian', value: 'it' },
+                  { label: 'Portuguese', value: 'pt' },
+                  { label: 'Japanese', value: 'ja' },
+                  { label: 'Chinese', value: 'zh' },
+                ]}
+                selected={getSelectedValues('targetLanguages')}
+                onChange={(values) => handleMultiFilterChange('targetLanguages', values)}
+                placeholder="All languages"
+                className="w-full"
+                data-testid="filter-target-languages"
+              />
             </div>
           </div>
         )}
@@ -221,10 +254,10 @@ export default function CampaignFilters({ filters, onFiltersChange }: CampaignFi
               <Badge 
                 variant="secondary" 
                 className="bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
-                onClick={() => handleFilterChange('status', '')}
+                onClick={() => handleMultiFilterChange('status', [])}
                 data-testid="active-filter-status"
               >
-                Status: {filters.status}
+                Status: {Array.isArray(filters.status) ? filters.status.join(', ') : filters.status}
                 <XIcon className="w-3 h-3 ml-1" />
               </Badge>
             )}
@@ -232,10 +265,12 @@ export default function CampaignFilters({ filters, onFiltersChange }: CampaignFi
               <Badge 
                 variant="secondary" 
                 className="bg-orange-100 text-orange-800 cursor-pointer hover:bg-orange-200"
-                onClick={() => handleFilterChange('contentStatus', '')}
+                onClick={() => handleMultiFilterChange('contentStatus', [])}
                 data-testid="active-filter-content-status"
               >
-                Review: {filters.contentStatus.replace('_', ' ')}
+                Review: {Array.isArray(filters.contentStatus) 
+                  ? filters.contentStatus.map(s => s.replace(/_/g, ' ')).join(', ')
+                  : filters.contentStatus.replace(/_/g, ' ')}
                 <XIcon className="w-3 h-3 ml-1" />
               </Badge>
             )}
@@ -243,10 +278,12 @@ export default function CampaignFilters({ filters, onFiltersChange }: CampaignFi
               <Badge 
                 variant="secondary" 
                 className="bg-green-100 text-green-800 cursor-pointer hover:bg-green-200"
-                onClick={() => handleFilterChange('contentType', '')}
+                onClick={() => handleMultiFilterChange('contentType', [])}
                 data-testid="active-filter-content-type"
               >
-                Type: {filters.contentType.replace('_', ' ')}
+                Type: {Array.isArray(filters.contentType)
+                  ? filters.contentType.map(s => s.replace(/_/g, ' ')).join(', ')
+                  : filters.contentType.replace(/_/g, ' ')}
                 <XIcon className="w-3 h-3 ml-1" />
               </Badge>
             )}
@@ -272,14 +309,29 @@ export default function CampaignFilters({ filters, onFiltersChange }: CampaignFi
                 <XIcon className="w-3 h-3 ml-1" />
               </Badge>
             )}
-            {filters.language && (
+            {filters.defaultLanguage && (
               <Badge 
                 variant="secondary" 
                 className="bg-pink-100 text-pink-800 cursor-pointer hover:bg-pink-200"
-                onClick={() => handleFilterChange('language', '')}
-                data-testid="active-filter-language"
+                onClick={() => handleMultiFilterChange('defaultLanguage', [])}
+                data-testid="active-filter-default-language"
               >
-                Language: {filters.language.toUpperCase()}
+                Default: {Array.isArray(filters.defaultLanguage)
+                  ? filters.defaultLanguage.map(l => l.toUpperCase()).join(', ')
+                  : filters.defaultLanguage.toUpperCase()}
+                <XIcon className="w-3 h-3 ml-1" />
+              </Badge>
+            )}
+            {filters.targetLanguages && (
+              <Badge 
+                variant="secondary" 
+                className="bg-rose-100 text-rose-800 cursor-pointer hover:bg-rose-200"
+                onClick={() => handleMultiFilterChange('targetLanguages', [])}
+                data-testid="active-filter-target-languages"
+              >
+                Targets: {Array.isArray(filters.targetLanguages)
+                  ? filters.targetLanguages.map(l => l.toUpperCase()).join(', ')
+                  : filters.targetLanguages.toUpperCase()}
                 <XIcon className="w-3 h-3 ml-1" />
               </Badge>
             )}

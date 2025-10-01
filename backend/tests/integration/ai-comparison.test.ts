@@ -2,6 +2,7 @@ import request from 'supertest';
 import { createApp } from '../../src/app';
 import { Campaign } from '../../src/models/Campaign';
 import { ContentPiece } from '../../src/models/ContentPiece';
+import { sequelize } from '../../src/config/database';
 import { Express } from 'express';
 
 let app: Express;
@@ -12,9 +13,9 @@ describe('AI Comparison API', () => {
 
   beforeAll(async () => {
     app = await createApp();
-    // Clean up any existing test data
-    await ContentPiece.destroy({ where: {}, force: true });
-    await Campaign.destroy({ where: {}, force: true });
+    
+    // Ensure database is synced
+    await sequelize.sync({ force: true });
 
     campaign = await Campaign.create({
       name: 'Test Campaign',
@@ -26,7 +27,7 @@ describe('AI Comparison API', () => {
 
     contentPiece = await ContentPiece.create({
       campaignId: campaign.id,
-      type: 'blog_post',
+      type: 'body_content',
       originalContent: 'Original content for testing',
       language: 'en',
       status: 'draft',
@@ -34,14 +35,13 @@ describe('AI Comparison API', () => {
   });
 
   afterAll(async () => {
-    await ContentPiece.destroy({ where: {}, force: true });
-    await Campaign.destroy({ where: {}, force: true });
+    // Cleanup is handled by global test setup
   });
 
   describe('POST /api/v1/ai/compare/:contentId', () => {
     it('should compare AI models successfully with fake AI enabled', async () => {
       // Ensure fake AI is enabled for testing
-      process.env.USE_FAKE_AI = 'true';
+      process.env.NODE_ENV = 'test';
 
       const response = await request(app)
         .post(`/api/v1/ai/compare/${contentPiece.id}`)
@@ -110,7 +110,7 @@ describe('AI Comparison API', () => {
     });
 
     it('should handle single model comparison', async () => {
-      process.env.USE_FAKE_AI = 'true';
+      process.env.NODE_ENV = 'test';
 
       const response = await request(app)
         .post(`/api/v1/ai/compare/${contentPiece.id}`)
@@ -125,7 +125,7 @@ describe('AI Comparison API', () => {
     });
 
     it('should use default models when none specified', async () => {
-      process.env.USE_FAKE_AI = 'true';
+      process.env.NODE_ENV = 'test';
 
       const response = await request(app)
         .post(`/api/v1/ai/compare/${contentPiece.id}`)

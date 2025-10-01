@@ -28,7 +28,6 @@ data:
   # AI service settings
   AI_TIMEOUT: "30000"
   AI_RATE_LIMIT: "60"
-  USE_FAKE_AI: "false"
   
   # GraphQL settings
   ENABLE_GRAPHQL_PLAYGROUND: "false"

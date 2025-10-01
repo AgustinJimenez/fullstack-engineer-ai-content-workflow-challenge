@@ -71,7 +71,7 @@ This directory contains comprehensive test coverage for the unified AI system AP
 ### ✅ **Core Functionality**
 - All CRUD operations for AI endpoints
 - Unified AI provider system (OpenAI/Anthropic)
-- Simulation mode for testing (USE_FAKE_AI=true)
+- Simulation mode for testing (automatically enabled in test environment)
 - Error handling and validation
 - Response format consistency
 
@@ -127,9 +127,8 @@ npm run test:coverage
 ## Test Configuration
 
 ### Environment Variables
-- `USE_FAKE_AI=true` - Enables simulation mode for consistent test results
-- `AI_PROVIDER=openai|anthropic` - Configures which AI provider to test
-- `NODE_ENV=test` - Enables test-specific behaviors
+- `NODE_ENV=test` - Enables test-specific behaviors and simulation mode
+- `AI_PROVIDER=openai|anthropic|fake` - Configures which AI provider to use
 
 ### Database Setup
 Integration tests require a test database. Tests use:

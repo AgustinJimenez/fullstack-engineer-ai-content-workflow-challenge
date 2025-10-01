@@ -85,6 +85,26 @@ type ReviewType {
   status: String!
 }
 
+type Subscription {
+  """Subscribe to AI generation events"""
+  aiGenerationCreated: String!
+
+  """Subscribe to updates for a specific campaign"""
+  campaignById(id: ID!): CampaignType!
+
+  """Subscribe to all campaign changes (created, updated, deleted)"""
+  campaignUpdated: CampaignType!
+
+  """Subscribe to content updates for a specific campaign"""
+  contentByCampaign(campaignId: ID!): ContentPieceType!
+
+  """Subscribe to content piece changes"""
+  contentUpdated: ContentPieceType!
+
+  """Subscribe to review events"""
+  reviewCreated: String!
+}
+
 type TranslationType {
   contentPieceId: ID!
   createdAt: DateTimeISO!

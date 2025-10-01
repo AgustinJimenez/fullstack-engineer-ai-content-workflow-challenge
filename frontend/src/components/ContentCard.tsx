@@ -8,6 +8,7 @@ import TranslateModal from './TranslateModal';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { Button } from '@/components/ui/button';
 import { CheckCircleIcon, ClipboardIcon, SparklesIcon, TrashIcon, Languages } from 'lucide-react';
+import { getModelDisplayName, getLanguageDisplayName } from '@/utils/modelUtils';
 import { useToast } from '@/components/ui/use-toast';
 
 interface ContentCardProps {
@@ -109,8 +110,15 @@ export default function ContentCard({ content: initialContent, onUpdate, campaig
   };
 
   const displayType = (() => {
-    const base = content.type.replace('_', ' ');
-    return base.charAt(0).toUpperCase() + base.slice(1);
+    const typeLabels: Record<string, string> = {
+      'headline': 'Headline',
+      'description': 'Description',
+      'body_content': 'Body Content',
+      'cta': 'Call to Action',
+      'tagline': 'Tagline',
+      'social_post': 'Social Media Post'
+    };
+    return typeLabels[content.type] || content.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   })();
 
 
@@ -160,36 +168,137 @@ export default function ContentCard({ content: initialContent, onUpdate, campaig
       </div>
 
       {/* AI Generations */}
-      {content.aiGenerations && content.aiGenerations.length > 0 && (
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-600">AI Generations:</p>
-            <p className="text-xs text-gray-500">
-              {content.aiGenerations.length} AI generations
-            </p>
-          </div>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {content.aiGenerations.map((generation, index) => (
-              <div key={generation.id} className="text-sm bg-blue-50 p-3 rounded border">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="font-medium text-blue-800">
-                    AI Generated {generation.modelVersion}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {new Date(generation.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <p className="text-gray-800">{generation.generatedText}</p>
-                {generation.promptUsed && (
-                  <p className="text-xs text-gray-600 mt-1 italic">
-                    Prompt: {generation.promptUsed}
+      {content.aiGenerations && content.aiGenerations.length > 0 && (() => {
+        // Separate translations from regular AI generations
+        const translations = content.aiGenerations.filter(gen => 
+          gen.promptUsed && gen.promptUsed.toLowerCase().includes('translate this text to')
+        );
+        const regularGenerations = content.aiGenerations.filter(gen => 
+          !gen.promptUsed || !gen.promptUsed.toLowerCase().includes('translate this text to')
+        );
+        
+        // Function to extract target language from translation prompt
+        const getTranslationLanguage = (prompt: string): string => {
+          const match = prompt.match(/translate this text to (\S+)/i);
+          if (match && match[1]) {
+            return getLanguageDisplayName(match[1]);
+          }
+          return 'Translation';
+        };
+        
+        return (
+          <>
+            {/* Regular AI Generations */}
+            {regularGenerations.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-600">AI Generations:</p>
+                  <p className="text-xs text-gray-500">
+                    {regularGenerations.length} AI generations
                   </p>
-                )}
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {regularGenerations.map((generation, index) => (
+                    <div key={generation.id} className="text-sm bg-blue-50 p-3 rounded border">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-medium text-blue-800">
+                          {content.language ? getLanguageDisplayName(content.language) : 'AI Generated'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(generation.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-gray-800">{generation.generatedText}</p>
+                      {generation.promptUsed && (
+                        <p className="text-xs text-gray-600 mt-1 italic">
+                          Prompt: {generation.promptUsed}
+                        </p>
+                      )}
+                      {(() => {
+                        // Parse and display analysis metadata
+                        let analysis;
+                        try {
+                          analysis = typeof generation.metadata === 'string' 
+                            ? JSON.parse(generation.metadata) 
+                            : generation.metadata;
+                        } catch {
+                          return null;
+                        }
+                        
+                        if (!analysis || typeof analysis !== 'object' || !analysis.keywords) return null;
+                        
+                        return (
+                          <div className="mt-2 pt-2 border-t border-blue-200">
+                            <div className="flex flex-wrap gap-2 items-center text-xs">
+                              {analysis.keywords && analysis.keywords.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {analysis.keywords.slice(0, 3).map((keyword: string, idx: number) => (
+                                    <span key={idx} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                                      {keyword}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {analysis.tone && (
+                                <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                                  {analysis.tone}
+                                </span>
+                              )}
+                              {analysis.sentiment?.label && (
+                                <span className={`px-1.5 py-0.5 rounded text-xs ${
+                                  analysis.sentiment.label === 'positive' 
+                                    ? 'bg-green-100 text-green-700'
+                                    : analysis.sentiment.label === 'negative'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {analysis.sentiment.label}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            )}
+            
+            {/* Translations (stored as AI generations) */}
+            {translations.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-600">Translations:</p>
+                  <p className="text-xs text-gray-500">
+                    {translations.length} translations
+                  </p>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {translations.map((translation) => (
+                    <div key={translation.id} className="text-sm bg-green-50 p-3 rounded border">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-medium text-green-800">
+                          {getTranslationLanguage(translation.promptUsed)}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(translation.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-gray-800">{translation.generatedText}</p>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-xs text-gray-600">
+                          AI Translated
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* Translations */}
       {content.translations && content.translations.length > 0 && (
@@ -220,8 +329,8 @@ export default function ContentCard({ content: initialContent, onUpdate, campaig
               .map((translation) => (
               <div key={translation.id} className="text-sm bg-green-50 p-3 rounded border">
                 <div className="flex justify-between items-start mb-2">
-                  <span className="font-medium text-green-800 uppercase">
-                    {translation.targetLanguage}
+                  <span className="font-medium text-green-800">
+                    {getLanguageDisplayName(translation.targetLanguage)}
                   </span>
                   <span className="text-xs text-gray-500">
                     {new Date(translation.createdAt).toLocaleDateString()}

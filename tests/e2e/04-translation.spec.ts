@@ -226,8 +226,8 @@ test.describe('Translation Workflow', () => {
 
     const contentTypes = [
       { type: 'headline', content: faker.company.catchPhrase() },
-      { type: 'product_description', content: faker.lorem.paragraph() },
-      { type: 'email_subject', content: faker.lorem.sentence() },
+      { type: 'description', content: faker.lorem.paragraph() },
+      { type: 'body_content', content: faker.lorem.paragraph() },
       { type: 'social_post', content: faker.lorem.sentence() }
     ];
 

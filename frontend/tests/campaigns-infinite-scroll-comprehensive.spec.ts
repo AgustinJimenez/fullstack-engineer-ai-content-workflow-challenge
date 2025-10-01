@@ -118,7 +118,7 @@ test.describe('Campaigns Infinite Scroll - Comprehensive Tests', () => {
     
     // Scroll to middle of the list
     const middleCampaign = page.locator('[data-testid^="campaign-row-"]').nth(5);
-    await middleCampaign.scrollIntoView();
+    await middleCampaign.scrollIntoViewIfNeeded();
     
     // Get scroll position
     const scrollPos = await page.evaluate(() => window.pageYOffset);
@@ -132,7 +132,7 @@ test.describe('Campaigns Infinite Scroll - Comprehensive Tests', () => {
     await page.waitForTimeout(3000);
     
     // Scroll back to middle
-    await middleCampaign.scrollIntoView();
+    await middleCampaign.scrollIntoViewIfNeeded();
     
     // The middle campaign should still be visible and in the same relative position
     await expect(middleCampaign).toBeVisible();

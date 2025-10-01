@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
+import { createServer } from 'http';
 import { sequelize } from './config/database';
 import { createApp } from './app';
+import { createSchema } from './graphql/schema';
+import { setupSubscriptions } from './graphql/server';
 
 dotenv.config();
 
@@ -19,7 +22,14 @@ async function startServer() {
     // Create app with GraphQL integration
     const app = await createApp();
 
-    app.listen(PORT, () => {
+    // Create HTTP server for WebSocket support
+    const httpServer = createServer(app);
+
+    // Setup GraphQL subscriptions
+    const schema = await createSchema();
+    setupSubscriptions(httpServer, schema);
+
+    httpServer.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📍 Health check: http://localhost:${PORT}/health`);
       console.log(`🔍 Liveness probe: http://localhost:${PORT}/health/live`);
@@ -27,8 +37,10 @@ async function startServer() {
       console.log(`📊 Metrics: http://localhost:${PORT}/metrics`);
       console.log(`ℹ️  Info: http://localhost:${PORT}/info`);
       console.log(`🎯 REST API: http://localhost:${PORT}/api/v1`);
+      console.log(`🔗 LangChain Workflows: http://localhost:${PORT}/api/v1/langchain`);
       console.log(`🎯 GraphQL API: http://localhost:${PORT}/graphql`);
       console.log(`🎮 GraphQL Playground: http://localhost:${PORT}/graphql`);
+      console.log(`🔌 GraphQL Subscriptions: ws://localhost:${PORT}/graphql`);
     });
   } catch (error) {
     console.error('❌ Unable to start server:', error);

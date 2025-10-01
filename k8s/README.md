@@ -502,6 +502,7 @@ Before deploying to production:
 - [Prometheus Operator](https://prometheus-operator.dev/)
 - [Cert-Manager](https://cert-manager.io/)
 - [Nginx Ingress Controller](https://kubernetes.github.io/ingress-nginx/)
+- [ArgoCD Deployment Guide](../docs/ARGOCD.md) - GitOps continuous delivery
 
 ## 🆘 Support
 
@@ -515,3 +516,5 @@ For deployment issues:
 ---
 
 **Remember**: Always test deployments in a non-production environment first!
+
+For automated GitOps deployments, see the [ArgoCD Guide](../docs/ARGOCD.md).

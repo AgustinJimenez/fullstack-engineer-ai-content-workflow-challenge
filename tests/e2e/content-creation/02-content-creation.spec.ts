@@ -69,7 +69,7 @@ test.describe('Content Creation Workflow', () => {
     await expect(page.getByRole('heading', { name: 'Review Generated Content' })).toBeVisible();
 
     // Now save the content
-    await page.getByRole('button', { name: 'Save Content' }).click();
+    await page.locator('button:has-text("Save")').click();
 
     // Verify success toast and content appears
     await expect(page.getByText('Content saved successfully').first()).toBeVisible();
@@ -106,7 +106,7 @@ test.describe('Content Creation Workflow', () => {
     await expect(page.getByText('AI content generated').first()).toBeVisible();
 
     // Now save the content
-    await page.getByRole('button', { name: 'Save Content' }).click();
+    await page.locator('button:has-text("Save")').click();
 
     // Should succeed
     await expect(page.getByText('Content saved successfully').first()).toBeVisible();
@@ -147,7 +147,7 @@ test.describe('Content Creation Workflow', () => {
 
       // Wait for generation and save
       await expect(page.getByText('AI content generated').first()).toBeVisible();
-      await page.getByRole('button', { name: 'Save Content' }).click();
+      await page.locator('button:has-text("Save")').click();
       await expect(page.getByText('Content saved successfully').first()).toBeVisible({ timeout: 15000 });
 
       // Verify content appears (using first() since there might be multiple)
@@ -275,7 +275,7 @@ test.describe('Content Creation Workflow', () => {
 
     // Wait for generation and then save
     await expect(page.getByText('AI content generated').first()).toBeVisible();
-    await page.getByRole('button', { name: 'Save Content' }).click();
+    await page.locator('button:has-text("Save")').click();
 
     // Verify special characters are preserved
     await expect(page.getByText('Content saved').first()).toBeVisible({ timeout: 15000 });

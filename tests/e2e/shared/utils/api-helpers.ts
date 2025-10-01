@@ -10,7 +10,7 @@ export class APIHelpers {
     return this.baseURL;
   }
 
-  async createCampaign(data: { name: string; description?: string }) {
+  async createCampaign(data: { name: string; description?: string; targetLanguages?: string[] }) {
     const response = await this.request.post(`${this.baseURL}/api/v1/campaigns`, {
       data,
     });

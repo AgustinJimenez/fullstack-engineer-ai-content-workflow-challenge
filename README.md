@@ -19,7 +19,7 @@ A full-stack AI-powered content management system for creating, translating, and
 - **Language**: TypeScript
 - **Framework**: Express.js with Sequelize ORM
 - **Database**: PostgreSQL
-- **AI Integration**: Unified system supporting OpenAI and Anthropic
+- **AI Integration**: Unified system supporting OpenAI, Anthropic, and Ollama (local LLM)
 - **Real-time**: Server-Sent Events (SSE)
 - **API**: RESTful API architecture
 
@@ -36,10 +36,45 @@ A full-stack AI-powered content management system for creating, translating, and
 
 ## 🚀 Quick Start
 
+### Interactive Installation (Recommended)
+
+The easiest way to get started is using our interactive installation script:
+
+```bash
+git clone <repository-url>
+cd fullstack-engineer-ai-content-workflow-challenge
+chmod +x install.sh
+./install.sh
+```
+
+The installer will guide you through three options:
+
+#### Option 1: 🏠 Local LLM (Self-hosted)
+- ✅ **Completely free and private**
+- ✅ **No API keys required**
+- ✅ **Works offline**
+- Uses Ollama with Phi-4-mini model
+- Requires ~4GB RAM, downloads 2.5GB model
+
+#### Option 2: ☁️ External AI APIs
+- ✅ **Faster responses**
+- ✅ **No local resource usage**
+- Supports OpenAI and Anthropic
+- Requires API keys (paid services)
+
+#### Option 3: 🔧 Hybrid Setup
+- ✅ **Best of both worlds**
+- Local LLM for development/testing
+- External APIs for production
+
+### Manual Installation
+
+If you prefer manual setup:
+
 ### Prerequisites
 - Docker and Docker Compose
-- Node.js 18+ (for development)
-- AI API key (OpenAI or Anthropic)
+- For local LLM: ~4GB available RAM
+- For external APIs: OpenAI or Anthropic API key
 
 ### 1. Clone the Repository
 ```bash
@@ -47,15 +82,47 @@ git clone <repository-url>
 cd fullstack-engineer-ai-content-workflow-challenge
 ```
 
-### 2. Environment Setup
+### 2. Choose Your Setup
+
+**Option A: Use Cloud AI (OpenAI/Anthropic)**
 ```bash
-# Copy environment template
 cp .env.example .env
 
 # Configure your AI settings in .env
 AI_PROVIDER=openai          # or 'anthropic'
 AI_API_KEY=your_api_key_here
 ```
+
+**Option B: Local AI with Ollama (Recommended for Development)**
+```bash
+# Configure .env for local AI
+cp .env.example .env
+echo "AI_PROVIDER=ollama" >> .env
+echo "OLLAMA_MODEL=phi4-mini:latest" >> .env
+echo "OLLAMA_BASE_URL=http://localhost:11434" >> .env
+
+# For hybrid setup, also add API keys:
+# echo "OPENAI_API_KEY=your_key_here" >> .env
+# echo "ANTHROPIC_API_KEY=your_key_here" >> .env
+```
+
+**Option C: Fake AI for Testing/Development**
+```bash
+cp .env.example .env
+
+# Use fake AI provider for testing
+AI_PROVIDER=fake
+OLLAMA_BASE_URL=http://localhost:11434  # Optional: will use Ollama if available
+OLLAMA_MODEL=phi4-mini:latest
+```
+
+**Smart AI Provider Behavior:**
+- `AI_PROVIDER=openai/anthropic` → Uses cloud AI APIs (production)
+- `AI_PROVIDER=ollama` → Uses local Ollama installation
+- `AI_PROVIDER=fake` + Ollama running → Uses real local LLM (testing)
+- `AI_PROVIDER=fake` + No Ollama → Falls back to mocks (unit tests)
+
+See [Ollama Setup Guide](docs/OLLAMA_SETUP.md) and [GGUF Models Guide](docs/OLLAMA_GGUF_GUIDE.md) for detailed instructions.
 
 ### 3. Start the Application
 ```bash
@@ -77,9 +144,35 @@ docker-compose up --build -d
 3. Add content pieces and generate AI content
 4. Follow the [How to Use Guide](docs/HOW_TO_USE.md) for detailed instructions
 
+## ⚡ Quick Development Workflow
+
+For regular development, you only need these commands:
+
+```bash
+# Start development environment
+npm run dev                    # Full Docker setup
+
+# Run tests  
+npm run test:e2e              # E2E tests with fake AI
+npm run test:e2e:html         # E2E tests with HTML report
+
+# Database management
+./scripts/manage-db.sh reset  # Reset database
+./scripts/manage-db.sh status # Check database status
+
+# View logs
+npm run logs                  # All services
+npm run logs:backend          # Backend only
+npm run logs:frontend         # Frontend only
+
+# Stop services
+npm run down                  # Stop all containers
+```
+
 ## 📚 Documentation
 
 - **[How to Use Guide](docs/HOW_TO_USE.md)** - Complete user guide with examples
+- **[Ollama Setup Guide](docs/OLLAMA_SETUP.md)** - Use local LLM instead of cloud APIs
 - **[API Documentation](docs/API.md)** - REST API endpoints and examples
 - **[Architecture Guide](docs/ARCHITECTURE.md)** - System design and architecture
 - **[Development Guide](docs/DEVELOPMENT.md)** - Development setup and workflows
@@ -89,28 +182,29 @@ docker-compose up --build -d
 
 ### Local Development Setup
 ```bash
-# Install dependencies
-npm install
+# Quick start (recommended)
+npm run dev              # Uses docker compose with dev settings
 
-# Start database
-docker-compose up postgres -d
+# Alternative development options
+npm run dev:simple       # Simple docker compose start
+npm run dev:prod         # Production-like build
+npm run dev:local        # Run backend/frontend locally (no Docker)
 
-# Start backend (development mode)
-cd backend
-npm run dev
-
-# Start frontend (development mode)  
-cd frontend
-npm run dev
+# Manual setup (if needed)
+npm install              # Install root dependencies
+cd backend && npm install && cd ../frontend && npm install
+docker compose up db -d  # Start database only
 ```
 
 ### Running Tests
 ```bash
-# E2E tests with Docker
-npm run test:e2e:docker
-
-# E2E tests locally (requires services running)
+# E2E tests (requires services running)
 npm run test:e2e
+
+# E2E tests with different reporters
+npm run test:e2e:html       # HTML report
+npm run test:e2e:headed     # With browser UI
+npm run test:e2e:junit      # JUnit XML report
 
 # Backend unit tests
 cd backend && npm test
@@ -129,23 +223,94 @@ cd frontend && npm test
 
 # Check database status
 ./scripts/manage-db.sh status
+
+# Seed database with sample data
+npm run seed              # Create 3000 campaigns with content
+npm run seed:small        # Create 100 campaigns (faster)
+npm run seed:large        # Create 5000 campaigns
+npm run seed:clear        # Clear all data then seed with defaults
 ```
+
+### Database Seeding
+
+The application includes comprehensive database seeders to populate your development environment with realistic sample data:
+
+**Quick Seeding Commands:**
+```bash
+# Standard seeding (3000 campaigns)
+npm run seed
+
+# Small dataset for testing (100 campaigns)
+npm run seed:small
+
+# Large dataset for performance testing (5000 campaigns)
+npm run seed:large
+
+# Clear existing data and reseed
+npm run seed:clear
+```
+
+**What Gets Seeded:**
+- **Campaigns**: Marketing campaigns with realistic names, descriptions, and target languages
+- **Content Pieces**: Various content types (headlines, descriptions, CTAs, social posts, etc.)
+- **AI Generations**: Simulated AI-generated content with metadata
+- **Translations**: Multi-language translations with quality scores
+- **Reviews**: Human review workflow data with feedback
+
+**Seeder Features:**
+- **Realistic Data**: Uses Faker.js for authentic-looking content
+- **Relationships**: Proper foreign key relationships between all entities
+- **Variety**: Different content types, statuses, and workflows
+- **Performance**: Efficient batch processing for large datasets
+- **Configurable**: Customizable via command-line options
+
+**Manual Seeding Options:**
+```bash
+# Run seeder directly with custom options
+docker exec ai-content-backend npx ts-node src/seeders/index.ts --count=500 --clear
+
+# Available options:
+# --count=N    Number of campaigns to create (default: 3000)
+# --clear      Clear existing data before seeding
+# --quiet      Minimal output during seeding
+```
+
+The seeders create a realistic development environment with:
+- Mixed campaign statuses (active, paused, completed)
+- Content in various stages of the workflow
+- AI generations with different providers and models
+- Multi-language translations
+- Review workflow data with human feedback
 
 ## 🎯 AI Integration Design
 
 ### Unified AI Provider System
 Our AI integration uses a **provider-agnostic architecture**:
 
+**Supported Providers:**
+- ☁️ **OpenAI** (GPT-4, GPT-3.5-turbo)
+- ☁️ **Anthropic** (Claude 3.5 Sonnet, Claude 3 Haiku)
+- 🏠 **Ollama** (Phi-4-mini, Gemma 3, Llama 3.2, Mistral) - **FREE & Local!**
+
 **Why This Approach?**
-- **Flexibility**: Easy to switch between OpenAI and Anthropic
-- **Cost Optimization**: Choose the best provider for different use cases
+- **Flexibility**: Easy to switch between providers
+- **Cost Optimization**: Use free local models for dev/testing, cloud for production
 - **Risk Mitigation**: Not dependent on a single AI provider
+- **Privacy**: Run completely offline with Ollama
 - **Future-Proof**: Easy to add new providers (Google, Cohere, etc.)
 
 **Configuration**:
 ```bash
+# Cloud AI
 AI_PROVIDER=openai    # or 'anthropic'
-AI_API_KEY=your_key   # unified key configuration
+AI_API_KEY=your_key
+
+# Local LLM (no API key needed!)
+AI_PROVIDER=ollama
+OLLAMA_MODEL=phi4-mini:latest
+
+# Fake AI for testing/development
+AI_PROVIDER=fake
 ```
 
 **Benefits**:
@@ -238,16 +403,59 @@ docker-compose -f compose.yml -f compose.prod.yml up --build
 AI_PROVIDER=anthropic AI_API_KEY=prod_key docker-compose up --build
 ```
 
+### Kubernetes Deployment
+
+The application includes complete Kubernetes manifests for production deployment:
+
+```bash
+# Deploy using kubectl
+cd k8s
+./deploy.sh
+
+# Or deploy manually
+kubectl apply -f namespace.yaml
+kubectl apply -f configmap.yaml
+kubectl apply -f secret.yaml
+kubectl apply -f postgres-deployment.yaml
+kubectl apply -f backend-deployment.yaml
+kubectl apply -f frontend-deployment.yaml
+kubectl apply -f ingress.yaml
+kubectl apply -f hpa.yaml
+```
+
+See the [Kubernetes Deployment Guide](k8s/README.md) for detailed instructions.
+
+### GitOps with ArgoCD
+
+For automated GitOps-based deployment:
+
+```bash
+# Install ArgoCD
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# Deploy application with ArgoCD
+kubectl apply -f k8s/argocd-project.yaml
+kubectl apply -f k8s/argocd-application.yaml
+
+# Monitor deployment
+argocd app sync ai-content-workflow --watch
+```
+
+See the [ArgoCD Deployment Guide](docs/ARGOCD.md) for complete setup and configuration.
+
 ### Environment Variables
 ```bash
 # Required
-AI_PROVIDER=openai|anthropic
-AI_API_KEY=your_api_key
+AI_PROVIDER=openai|anthropic|ollama|fake
+AI_API_KEY=your_api_key  # Not required for ollama or fake
 
 # Optional
 DATABASE_URL=postgresql://...
 NODE_ENV=production
 NEXT_PUBLIC_API_URL=https://your-api-domain.com
+OLLAMA_BASE_URL=http://localhost:11434  # For ollama or fake with Ollama
+OLLAMA_MODEL=phi4-mini:latest
 ```
 
 ## 🔍 Monitoring and Debugging
@@ -297,6 +505,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **[User Guide](docs/HOW_TO_USE.md)** - Start here if you're new to the system
 - **[API Docs](docs/API.md)** - Complete API reference
 - **[Architecture](docs/ARCHITECTURE.md)** - Technical deep dive
+- **[Kubernetes Guide](k8s/README.md)** - Kubernetes deployment
+- **[ArgoCD Guide](docs/ARGOCD.md)** - GitOps with ArgoCD
 - **[Original Requirements](README.OLD.md)** - Challenge specifications
 
 Built with ❤️ for ACME GLOBAL MEDIA's content workflow needs.

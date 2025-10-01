@@ -14,7 +14,8 @@ export default defineConfig({
     ['junit', { outputFile: 'test-results/junit-results.xml' }],
   ],
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: process.env.FRONTEND_URL || 
+      `http://${process.env.FRONTEND_HOST || 'localhost'}:${process.env.FRONTEND_PORT || 3000}`,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

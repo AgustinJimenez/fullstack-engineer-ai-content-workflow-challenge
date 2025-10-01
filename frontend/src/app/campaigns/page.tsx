@@ -286,7 +286,7 @@ export default function CampaignsPage() {
       data-testid={`campaign-row-${campaign.id}`}
       data-campaign-card={campaign.id}
     >
-      <TableCell className="w-[35%]">
+      <TableCell className="w-[30%]">
         <div className="flex flex-col">
           <Link
             href={`/campaigns/${campaign.id}`}
@@ -301,12 +301,12 @@ export default function CampaignsPage() {
           )}
         </div>
       </TableCell>
-      <TableCell className="text-center w-[10%]">
+      <TableCell className="text-center w-[8%]">
         <Badge variant="secondary" className={getStatusColor(campaign.status)}>
           {campaign.status}
         </Badge>
       </TableCell>
-      <TableCell className="text-center w-[8%]">
+      <TableCell className="text-center w-[7%]">
         <div className="flex items-center justify-center">
           <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -316,7 +316,7 @@ export default function CampaignsPage() {
           </span>
         </div>
       </TableCell>
-      <TableCell className="text-center w-[12%]">
+      <TableCell className="text-center w-[10%]">
         <div className="flex items-center justify-center">
           <ZapIcon className="w-4 h-4 mr-2 text-purple-600" />
           <span className="text-sm text-muted-foreground">
@@ -326,57 +326,25 @@ export default function CampaignsPage() {
           </span>
         </div>
       </TableCell>
-      <TableCell className="text-center w-[15%]">
-        <div className="flex items-center justify-center">
-          <LanguagesIcon className="w-4 h-4 mr-1 text-gray-400" />
-          <div className="relative group">
-            <span className="text-sm text-muted-foreground cursor-help">
-              {(() => {
-                const totalLanguages = (campaign.targetLanguages?.length || 0) + (campaign.defaultLanguage ? 1 : 0);
-                const targetCount = campaign.targetLanguages?.length || 0;
-                
-                if (totalLanguages === 0) return '0';
-                if (totalLanguages === 1) return campaign.defaultLanguage?.toUpperCase() || '1';
-                
-                return `${totalLanguages} langs`;
-              })()}
-            </span>
-            {/* Hover popover */}
-            {(() => {
-              const allLanguages = [
-                ...(campaign.defaultLanguage ? [campaign.defaultLanguage] : []),
-                ...(campaign.targetLanguages || [])
-              ].filter((lang, index, arr) => arr.indexOf(lang) === index); // Remove duplicates
-              
-              if (allLanguages.length > 1) {
-                return (
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 whitespace-nowrap">
-                    <div className="flex flex-wrap gap-1">
-                      {allLanguages.map((lang, index) => (
-                        <span 
-                          key={lang}
-                          className={`px-2 py-1 rounded text-xs ${
-                            lang === campaign.defaultLanguage 
-                              ? 'bg-blue-600 text-white' 
-                              : 'bg-gray-700 text-gray-200'
-                          }`}
-                        >
-                          {lang.toUpperCase()}
-                          {lang === campaign.defaultLanguage && ' (default)'}
-                        </span>
-                      ))}
-                    </div>
-                    {/* Arrow */}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                  </div>
-                );
-              }
-              return null;
-            })()}
-          </div>
+      <TableCell className="text-center w-[8%]">
+        <Badge variant="outline" className="font-mono">
+          {campaign.defaultLanguage?.toUpperCase() || 'N/A'}
+        </Badge>
+      </TableCell>
+      <TableCell className="text-center w-[12%]">
+        <div className="flex flex-wrap gap-1 justify-center">
+          {campaign.targetLanguages && campaign.targetLanguages.length > 0 ? (
+            campaign.targetLanguages.map(lang => (
+              <Badge key={lang} variant="secondary" className="text-xs font-mono">
+                {lang.toUpperCase()}
+              </Badge>
+            ))
+          ) : (
+            <span className="text-sm text-muted-foreground">—</span>
+          )}
         </div>
       </TableCell>
-      <TableCell className="text-center text-sm text-muted-foreground w-[12%]">
+      <TableCell className="text-center text-sm text-muted-foreground w-[10%]">
         {formatDate(campaign.createdAt)}
       </TableCell>
       <TableCell className="text-center w-[8%]">
@@ -696,12 +664,13 @@ export default function CampaignsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-left w-[35%]">Campaign</TableHead>
-                  <TableHead className="text-center w-[10%]">Status</TableHead>
-                  <TableHead className="text-center w-[8%]">Content</TableHead>
-                  <TableHead className="text-center w-[12%]">AI Generated</TableHead>
-                  <TableHead className="text-center w-[15%]">Languages</TableHead>
-                  <TableHead className="text-center w-[12%]">Created</TableHead>
+                  <TableHead className="text-left w-[30%]">Campaign</TableHead>
+                  <TableHead className="text-center w-[8%]">Status</TableHead>
+                  <TableHead className="text-center w-[7%]">Content</TableHead>
+                  <TableHead className="text-center w-[10%]">AI Generated</TableHead>
+                  <TableHead className="text-center w-[8%]">Default Lang</TableHead>
+                  <TableHead className="text-center w-[12%]">Target Langs</TableHead>
+                  <TableHead className="text-center w-[10%]">Created</TableHead>
                   <TableHead className="text-center w-[8%]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -720,7 +689,7 @@ export default function CampaignsPage() {
                 renderItem={renderCampaign}
                 keyExtractor={(campaign) => campaign.id.toString()}
                 className=""
-                colSpan={7}
+                colSpan={8}
                 tableMode={true}
                 error={error || null}
                 emptyComponent={searchQuery || Object.keys(filters).length > 0 ? (

@@ -18,6 +18,13 @@ class RedisEventBus extends EventEmitter {
 
   constructor() {
     super();
+    
+    // Skip Redis setup in test environment
+    if (process.env.NODE_ENV === 'test') {
+      this.isConnected = false;
+      return;
+    }
+    
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
     
     this.publisher = createClient({ url: redisUrl });
@@ -78,11 +85,16 @@ class RedisEventBus extends EventEmitter {
   }
 
   async disconnect() {
-    if (this.isConnected) {
-      await this.publisher.disconnect();
-      await this.subscriber.disconnect();
-      this.isConnected = false;
-      console.log('🔌 Redis EventBus disconnected');
+    if (this.isConnected && this.publisher && this.subscriber) {
+      try {
+        await this.publisher.disconnect();
+        await this.subscriber.disconnect();
+        this.isConnected = false;
+        console.log('🔌 Redis EventBus disconnected');
+      } catch (error) {
+        // Ignore disconnection errors
+        console.log('ℹ️  Redis EventBus disconnect completed with warnings');
+      }
     }
   }
 }

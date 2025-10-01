@@ -55,7 +55,7 @@ test.describe('Review Workflow', () => {
     await expect(reviewModal.getByText(originalContent).first()).toBeVisible();
     
     await expect(reviewModal.getByText('AI Generated Content')).toBeVisible();
-    await expect(reviewModal.getByText('AI-Generated (openai):').first()).toBeVisible();
+    await expect(reviewModal.getByText('AI-Generated (fake):').first()).toBeVisible();
     
     await expect(reviewModal.getByText('Translations')).toBeVisible();
     await expect(reviewModal.getByText('[ES Translation]:').first()).toBeVisible();

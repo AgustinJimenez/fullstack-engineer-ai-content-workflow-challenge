@@ -166,7 +166,7 @@ describe('AI API Performance and Load Tests', () => {
         .post('/api/v1/content')
         .send({
           campaignId,
-          type: 'body',
+          type: 'body_content',
           originalContent: 'This is a very long piece of content. '.repeat(100), // ~4000 characters
           language: 'en',
         });

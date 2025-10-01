@@ -3,6 +3,7 @@
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -11,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Sparkles, Brain, Zap } from 'lucide-react';
+import { PROMPT_TEMPLATES } from '@/constants/promptTemplates';
 
 interface AIGenerationSettingsProps {
   selectedProvider: string;
@@ -38,20 +40,6 @@ const AI_PROVIDERS = [
   }
 ];
 
-const PROMPT_TEMPLATES: { [key: string]: { [key: string]: string } } = {
-  headline: {
-    default: 'Create a compelling headline that grabs attention',
-    engaging: 'Write an engaging headline that drives action and curiosity',
-    professional: 'Craft a professional headline for business audiences',
-    emotional: 'Create an emotionally resonant headline that connects with readers',
-  },
-  description: {
-    default: 'Write a clear and persuasive product description',
-    detailed: 'Create a comprehensive description with key features and benefits',
-    concise: 'Write a brief but impactful description',
-  },
-  // Add more templates as needed
-};
 
 export default function AIGenerationSettings({
   selectedProvider,
@@ -76,6 +64,7 @@ export default function AIGenerationSettings({
               className={selectedProvider === provider.id ? provider.color : ''}
               onClick={() => setSelectedProvider(provider.id)}
               disabled={loading}
+              data-testid={`ai-provider-${provider.id}`}
             >
               {provider.icon}
               <span className="ml-2">{provider.name}</span>
@@ -86,15 +75,27 @@ export default function AIGenerationSettings({
         <div className="space-y-2">
           <Label>Prompt Template</Label>
           <Select value={promptTemplate} onValueChange={setPromptTemplate} disabled={loading}>
-            <SelectTrigger>
+            <SelectTrigger data-testid="prompt-template-select">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.keys(templates).map(template => (
-                <SelectItem key={template} value={template}>
-                  {template.charAt(0).toUpperCase() + template.slice(1)}
-                </SelectItem>
-              ))}
+              {Object.keys(templates).map(template => {
+                const labels: { [key: string]: string } = {
+                  default: 'Default (3-5 options)',
+                  single: 'Single Option',
+                  multiple: 'Multiple (10 options)',
+                  engaging: 'Engaging Style',
+                  professional: 'Professional Style',
+                  emotional: 'Emotional Style',
+                  detailed: 'Detailed',
+                  concise: 'Concise'
+                };
+                return (
+                  <SelectItem key={template} value={template}>
+                    {labels[template] || template.charAt(0).toUpperCase() + template.slice(1)}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>

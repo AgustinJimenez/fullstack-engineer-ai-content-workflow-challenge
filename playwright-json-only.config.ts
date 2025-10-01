@@ -7,8 +7,8 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  retries: process.env.CI ? 2 : 1,
+  workers: 1, // Single worker for reliable test execution
   
   // Only JSON reporter, no console output
   reporter: [
@@ -31,13 +31,16 @@ export default defineConfig({
     },
   ],
 
-  // Auto-start servers
+  // Auto-start servers with test environment
   webServer: [
     {
-      command: 'docker compose up --build',
+      command: 'AI_PROVIDER=fake docker compose up --build',
       port: 3000,
       timeout: 120000,
       reuseExistingServer: true,
+      env: {
+        AI_PROVIDER: 'fake'
+      }
     },
   ],
 

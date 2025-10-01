@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
+import { useToast } from '@/components/ui/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -46,10 +47,21 @@ export default function TranslateModal({
   onClose, 
   onSuccess 
 }: TranslateModalProps) {
+  const { toast } = useToast();
   const [selectedLanguages, setSelectedLanguages] = useState<Set<string>>(new Set());
   const [translating, setTranslating] = useState(false);
   const [completedTranslations, setCompletedTranslations] = useState<Set<string>>(new Set());
+  const [currentlyTranslating, setCurrentlyTranslating] = useState<string>('');
   const [error, setError] = useState('');
+
+  // Reset states when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setError('');
+      setCurrentlyTranslating('');
+      setCompletedTranslations(new Set());
+    }
+  }, [isOpen]);
 
   // Initialize with campaign target languages if available
   useEffect(() => {
@@ -109,7 +121,8 @@ export default function TranslateModal({
 
     try {
       // Translate to each selected language
-      for (const languageCode of selectedLanguages) {
+      for (const languageCode of Array.from(selectedLanguages)) {
+        setCurrentlyTranslating(languageCode);
         try {
           await apiClient.translateContent(content.id, { 
             targetLanguage: languageCode 
@@ -121,14 +134,20 @@ export default function TranslateModal({
           // Continue with other languages even if one fails
         }
       }
+      setCurrentlyTranslating('');
 
       if (completed.size > 0) {
-        onSuccess(); // Refresh parent data
+        // Show success message but don't close modal immediately
+        toast({
+          title: 'Translations completed!',
+          description: `Successfully translated to ${completed.size} language(s). You can now close this modal.`,
+          variant: 'success'
+        });
         
-        // Close modal after a brief delay to show completion
+        // Call onSuccess to refresh parent data after a small delay to prevent blinking
         setTimeout(() => {
-          onClose();
-        }, 1000);
+          onSuccess(); 
+        }, 500);
       } else {
         setError('All translations failed. Please try again.');
       }
@@ -251,7 +270,13 @@ export default function TranslateModal({
           <div className="flex gap-2">
             {selectedLanguages.size > 0 && (
               <span className="text-sm text-gray-500 self-center">
-                {completedTranslations.size}/{selectedLanguages.size} completed
+                {translating ? (
+                  currentlyTranslating ? 
+                    `Translating to ${getLanguageName(currentlyTranslating)}... (${completedTranslations.size + 1}/${selectedLanguages.size})` :
+                    `${completedTranslations.size}/${selectedLanguages.size} completed`
+                ) : (
+                  `${completedTranslations.size}/${selectedLanguages.size} completed`
+                )}
               </span>
             )}
             

@@ -44,11 +44,25 @@ describe('Testcontainers Integration Tests', () => {
     // Override the global sequelize instance for testing
     jest.doMock('../../src/config/database', () => ({ sequelize }));
     
-    app = createApp();
+    app = await createApp();
   }, 60000); // 60 second timeout for container startup
 
   afterAll(async () => {
+    // Clean up all Redis connections
+    try {
+      const { closePubSub } = await import('../../src/graphql/pubsub');
+      await closePubSub();
+      
+      const { redisEventBus } = await import('../../src/events/redisEventBus');
+      await redisEventBus.disconnect();
+    } catch (error) {
+      console.log('Redis cleanup completed');
+    }
+    
+    // Close database connection
     await sequelize.close();
+    
+    // Stop container
     await container.stop();
   });
 

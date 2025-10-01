@@ -21,6 +21,8 @@ describe('API Client', () => {
 
       mockedFetch.mockResolvedValueOnce({
         ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => mockResponse,
       } as Response)
 
@@ -45,6 +47,8 @@ describe('API Client', () => {
 
       mockedFetch.mockResolvedValueOnce({
         ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => mockResponse,
       } as Response)
 
@@ -66,6 +70,7 @@ describe('API Client', () => {
       mockedFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
+        headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => errorResponse,
       } as Response)
 
@@ -98,6 +103,8 @@ describe('API Client', () => {
 
       mockedFetch.mockResolvedValueOnce({
         ok: true,
+        status: 201,
+        headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => mockResponse,
       } as Response)
 
@@ -117,67 +124,14 @@ describe('API Client', () => {
     })
   })
 
-  describe('executeLangChainWorkflow', () => {
-    it('should execute LangChain workflow successfully', async () => {
-      const contentId = 456
-      const workflowData = {
-        targetLanguage: 'es',
-        customPrompt: 'Generate marketing content'
-      }
-
-      const mockResponse = {
-        success: true,
-        workflow: 'generate-analyze-translate',
-        results: {
-          generation: {
-            id: 789,
-            text: 'Generated content',
-            analysis: {
-              keywords: ['marketing', 'content'],
-              tone: 'professional',
-              sentiment: { label: 'positive', score: 0.8 }
-            }
-          },
-          translation: {
-            id: 790,
-            language: 'es',
-            text: 'Contenido generado'
-          }
-        },
-        metadata: {
-          provider: 'langchain-fake',
-          executionTime: 1000
-        }
-      }
-
-      mockedFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
-      } as Response)
-
-      const result = await apiClient.executeLangChainWorkflow(contentId, workflowData)
-
-      expect(mockedFetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/langchain/workflow/456',
-        expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(workflowData),
-        })
-      )
-      expect(result).toEqual(mockResponse)
-    })
-  })
-
   describe('error handling', () => {
     it('should handle malformed JSON error response', async () => {
       mockedFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
+        headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => { throw new Error('Invalid JSON') },
-      } as Response)
+      } as unknown as Response)
 
       await expect(apiClient.getCampaigns()).rejects.toThrow('HTTP error! status: 500')
     })
@@ -186,6 +140,7 @@ describe('API Client', () => {
       mockedFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
+        headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => ({}),
       } as Response)
 

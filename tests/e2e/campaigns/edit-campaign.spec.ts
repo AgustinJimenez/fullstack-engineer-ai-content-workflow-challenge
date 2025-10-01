@@ -42,6 +42,9 @@ test('should edit campaign through modal', async ({ page }) => {
   // Submit the form
   await page.getByRole('button', { name: 'Update Campaign' }).click();
   
+  // Wait for modal to close and page to refresh
+  await page.waitForTimeout(1000);
+  
   // Should show updated values
   await expect(page.getByRole('heading', { name: updatedName })).toBeVisible();
   await expect(page.getByText(updatedDescription)).toBeVisible();

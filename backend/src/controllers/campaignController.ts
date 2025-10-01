@@ -45,16 +45,17 @@ export class CampaignController {
         contentType,
         hasAIContent,
         hasTranslations,
-        language
+        defaultLanguage,
+        targetLanguages
       } = req.query;
       
-      console.log('getCampaigns filters:', { status, contentStatus, contentType, hasAIContent, hasTranslations, language });
+      console.log('getCampaigns filters:', { status, contentStatus, contentType, hasAIContent, hasTranslations, defaultLanguage, targetLanguages });
       
       const pageNum = Math.max(1, parseInt(page as string, 10));
       const limitNum = Math.min(50, Math.max(1, parseInt(limit as string, 10)));
       const { Op, Sequelize } = require('sequelize');
       
-      let whereClause: any = {};
+      const whereClause: any = {};
       
       if (cursor) {
         const cursorId = parseInt(cursor as string, 10);
@@ -64,18 +65,34 @@ export class CampaignController {
       }
 
       if (status) {
-        whereClause.status = status;
+        // Handle both single value and array
+        if (Array.isArray(status)) {
+          whereClause.status = { [Op.in]: status };
+        } else {
+          whereClause.status = status;
+        }
         console.log('Applied status filter:', status, 'whereClause:', whereClause);
       }
 
-      if (language) {
-        whereClause[Op.or] = [
-          { defaultLanguage: language },
+      // Handle defaultLanguage filter
+      if (defaultLanguage) {
+        const languages = Array.isArray(defaultLanguage) ? defaultLanguage : [defaultLanguage];
+        whereClause.defaultLanguage = { [Op.in]: languages };
+      }
+
+      // Handle targetLanguages filter
+      if (targetLanguages) {
+        const targets = Array.isArray(targetLanguages) ? targetLanguages : [targetLanguages];
+        const targetConditions = targets.map(lang => 
           Sequelize.where(
             Sequelize.cast(Sequelize.col('Campaign.target_languages'), 'text'),
-            { [Op.like]: `%${language}%` }
+            { [Op.like]: `%${lang}%` }
           )
-        ];
+        );
+        if (targetConditions.length > 0) {
+          if (!whereClause[Op.and]) whereClause[Op.and] = [];
+          whereClause[Op.and].push({ [Op.or]: targetConditions });
+        }
       }
 
       const contentInclude: any = {
@@ -90,13 +107,19 @@ export class CampaignController {
         console.log('🚀 Using optimized EXISTS query for content filtering');
         const { Op, Sequelize } = require('sequelize');
         
-        let contentWhere = [];
+        const contentWhere = [];
         if (contentStatus) {
-          contentWhere.push(`cp.status = '${contentStatus}'`);
+          // Handle both single value and array
+          const statuses = Array.isArray(contentStatus) ? contentStatus : [contentStatus];
+          const statusConditions = statuses.map(s => `cp.status = '${s}'`).join(' OR ');
+          contentWhere.push(`(${statusConditions})`);
           console.log('✅ Added contentStatus filter:', contentStatus);
         }
         if (contentType) {
-          contentWhere.push(`cp.type = '${contentType}'`);
+          // Handle both single value and array
+          const types = Array.isArray(contentType) ? contentType : [contentType];
+          const typeConditions = types.map(t => `cp.type = '${t}'`).join(' OR ');
+          contentWhere.push(`(${typeConditions})`);
           console.log('✅ Added contentType filter:', contentType);
         }
         
@@ -300,7 +323,8 @@ export class CampaignController {
         contentType,
         hasAIContent,
         hasTranslations,
-        language
+        defaultLanguage,
+        targetLanguages
       } = req.query;
       
       let campaignWhere = '';
@@ -308,23 +332,46 @@ export class CampaignController {
       const params: any[] = [];
       
       if (status) {
-        campaignWhere += ` AND c.status = $${params.length + 1}`;
-        params.push(status);
+        // Handle both single value and array
+        const statuses = Array.isArray(status) ? status : [status];
+        const statusPlaceholders = statuses.map((_, idx) => `$${params.length + idx + 1}`).join(', ');
+        campaignWhere += ` AND c.status IN (${statusPlaceholders})`;
+        params.push(...statuses);
       }
 
-      if (language) {
-        campaignWhere += ` AND (c.default_language = $${params.length + 1} OR c.target_languages::text LIKE $${params.length + 2})`;
-        params.push(language, `%${language}%`);
+      // Handle defaultLanguage filter
+      if (defaultLanguage) {
+        const languages = Array.isArray(defaultLanguage) ? defaultLanguage : [defaultLanguage];
+        const placeholders = languages.map((_, idx) => `$${params.length + idx + 1}`).join(', ');
+        campaignWhere += ` AND c.default_language IN (${placeholders})`;
+        params.push(...languages);
+      }
+
+      // Handle targetLanguages filter
+      if (targetLanguages) {
+        const targets = Array.isArray(targetLanguages) ? targetLanguages : [targetLanguages];
+        const targetConditions = targets.map((lang) => {
+          const paramIdx = params.length + 1;
+          params.push(`%${lang}%`);
+          return `c.target_languages::text LIKE $${paramIdx}`;
+        }).join(' OR ');
+        campaignWhere += ` AND (${targetConditions})`;
       }
 
       if (contentStatus) {
-        contentWhere += ` AND cp.status = $${params.length + 1}`;
-        params.push(contentStatus);
+        // Handle both single value and array
+        const statuses = Array.isArray(contentStatus) ? contentStatus : [contentStatus];
+        const statusPlaceholders = statuses.map((_, idx) => `$${params.length + idx + 1}`).join(', ');
+        contentWhere += ` AND cp.status IN (${statusPlaceholders})`;
+        params.push(...statuses);
       }
 
       if (contentType) {
-        contentWhere += ` AND cp.type = $${params.length + 1}`;
-        params.push(contentType);
+        // Handle both single value and array
+        const types = Array.isArray(contentType) ? contentType : [contentType];
+        const typePlaceholders = types.map((_, idx) => `$${params.length + idx + 1}`).join(', ');
+        contentWhere += ` AND cp.type IN (${typePlaceholders})`;
+        params.push(...types);
       }
 
       if (hasAIContent === 'true') {

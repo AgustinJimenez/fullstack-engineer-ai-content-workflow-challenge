@@ -55,8 +55,8 @@ test.describe('Campaign Filter UX', () => {
     await page.click('[data-testid="toggle-filters-icon"]');
     
     // Start applying filter
-    await page.click('[data-testid="filter-content-status"]');
-    await page.click('text=Draft');
+    await page.getByTestId('filter-content-status').click();
+    await page.getByRole('option', { name: 'Draft' }).click();
     
     // Check during the loading state (right after clicking)
     await page.waitForTimeout(50);

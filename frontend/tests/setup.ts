@@ -44,8 +44,11 @@ export async function createTestCampaigns(page: any, count: number = 15) {
 export async function cleanupTestCampaigns(page: any) {
   // This would ideally use a test-specific cleanup endpoint
   // For now, we'll rely on the backend's test cleanup functionality
+  const baseURL = process.env.NEXT_PUBLIC_API_URL || 
+    `http://${process.env.API_HOST || 'localhost'}:${process.env.API_PORT || 8080}`;
+  
   try {
-    await page.request.delete('http://localhost:3001/api/campaigns/test/cleanup', {
+    await page.request.delete(`${baseURL}/api/v1/campaigns`, {
       headers: {
         'Content-Type': 'application/json'
       }

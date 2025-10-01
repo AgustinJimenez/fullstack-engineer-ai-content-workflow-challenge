@@ -68,7 +68,7 @@ test('should create content through UI modal', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Review Generated Content' })).toBeVisible();
 
   // Now save the content
-  await page.getByRole('button', { name: 'Save Content' }).click();
+  await page.locator('button:has-text("Save")').click();
 
   // Verify success toast and content appears
   await expect(page.getByText('Content saved successfully').first()).toBeVisible();

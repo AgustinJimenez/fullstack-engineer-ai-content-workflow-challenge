@@ -1,0 +1,69 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-content-workflow
+  namespace: argocd
+  labels:
+    app: ai-content-workflow
+    environment: production
+  annotations:
+    notifications.argoproj.io/subscribe.on-sync-succeeded.slack: '#deployments'
+    notifications.argoproj.io/subscribe.on-health-degraded.slack: '#alerts'
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: ai-content-workflow-project
+  
+  # Source repository configuration
+  source:
+    repoURL: https://github.com/your-org/fullstack-engineer-ai-content-workflow-challenge.git
+    targetRevision: main
+    path: k8s
+    
+    # Directory configuration
+    directory:
+      recurse: false
+      exclude: |
+        README.md
+        deploy.sh
+        argocd-*.yaml
+  
+  # Destination cluster and namespace
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ai-content-workflow
+  
+  # Sync policy configuration
+  syncPolicy:
+    automated:
+      prune: true           # Delete resources not in Git
+      selfHeal: true        # Automatically sync when cluster state differs
+      allowEmpty: false     # Don't delete all resources if repo is empty
+    
+    syncOptions:
+      - CreateNamespace=true      # Create namespace if it doesn't exist
+      - PrunePropagationPolicy=foreground  # Wait for resources to be deleted
+      - PruneLast=true            # Prune resources after all other operations
+      - RespectIgnoreDifferences=true
+      - ApplyOutOfSyncOnly=true   # Only apply resources that are out of sync
+    
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  # Ignore differences for certain fields
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas  # Ignore replica count changes (HPA manages this)
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/replicas
+  
+  # Health check configuration
+  revisionHistoryLimit: 10

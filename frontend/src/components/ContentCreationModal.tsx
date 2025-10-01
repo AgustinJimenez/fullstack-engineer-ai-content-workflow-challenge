@@ -11,12 +11,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, Zap } from 'lucide-react';
+import { Loader2, Zap, ArrowLeft } from 'lucide-react';
 
 import ContentSetupStep from './content-creation/ContentSetupStep';
 import AIGenerationSettings from './content-creation/AIGenerationSettings';
 import GeneratedContentReview from './content-creation/GeneratedContentReview';
-import ContentAnalysisStep from './content-creation/ContentAnalysisStep';
+import { PROMPT_TEMPLATES } from '@/constants/promptTemplates';
 
 interface ContentCreationModalProps {
   campaignId: number;
@@ -26,7 +26,7 @@ interface ContentCreationModalProps {
   defaultLanguage?: string;
 }
 
-type Step = 'setup' | 'generated' | 'analysis';
+type Step = 'setup' | 'generated';
 
 interface AnalysisData {
   keywords?: string[];
@@ -38,20 +38,6 @@ interface AnalysisData {
   confidence?: number;
 }
 
-const PROMPT_TEMPLATES: { [key: string]: { [key: string]: string } } = {
-  headline: {
-    default: 'Create a compelling headline that grabs attention',
-    engaging: 'Write an engaging headline that drives action and curiosity',
-    professional: 'Craft a professional headline for business audiences',
-    emotional: 'Create an emotionally resonant headline that connects with readers',
-  },
-  description: {
-    default: 'Write a clear and persuasive product description',
-    detailed: 'Create a comprehensive description with key features and benefits',
-    concise: 'Write a brief but impactful description',
-  },
-  // Add more templates as needed
-};
 
 export default function ContentCreationModal({
   campaignId,
@@ -81,7 +67,7 @@ export default function ContentCreationModal({
   
   // Loading states
   const [loading, setLoading] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState('');
   const [contentWasCreated, setContentWasCreated] = useState(false);
 
@@ -107,21 +93,138 @@ export default function ContentCreationModal({
     setError('');
     
     try {
-      // For now, simulate AI generation without saving to database
-      // In a real implementation, you might call an AI service directly
-      // or use a temporary generation endpoint
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+      // First, create a temporary content piece to generate AI content
+      const tempContentResponse = await fetch('/api/v1/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId: campaignId,
+          type,
+          originalContent,
+          language: 'en'
+        })
+      });
+
+      if (!tempContentResponse.ok) {
+        throw new Error('Failed to create content piece');
+      }
+
+      const tempContent = await tempContentResponse.json();
+
+      // Now generate AI content using the real AI endpoint
+      const aiResponse = await fetch(`/api/v1/ai/generate/${tempContent.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: customPrompt,
+          model: selectedProvider
+        })
+      });
+
+      if (!aiResponse.ok) {
+        // Don't auto-delete on HTTP failure - AI might have succeeded despite HTTP timeout
+        // Get error details for better debugging
+        let errorMessage = 'Failed to generate AI content';
+        try {
+          const errorData = await aiResponse.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If we can't parse error, use status text
+          errorMessage = `${aiResponse.status}: ${aiResponse.statusText}`;
+        }
+        
+        // Log the content piece ID so user can manually clean up if needed
+        console.warn(`AI generation failed for content piece ${tempContent.id}. You may need to manually delete it.`);
+        
+        throw new Error(errorMessage);
+      }
+
+      const aiResult = await aiResponse.json();
       
-      // Generate mock AI content based on the prompt
-      const mockGeneratedContent = `AI-Generated (${selectedProvider}): ${originalContent} - Enhanced with ${selectedProvider} using the prompt: "${customPrompt.substring(0, 50)}..."`;
+      // Automatically analyze the generated content
+      let analysisResult = null;
+      try {
+        // Create another temporary content piece for analysis
+        const analysisTempResponse = await fetch('/api/v1/content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaignId: campaignId,
+            type: 'analysis',
+            originalContent: aiResult.generatedText,
+            language: 'en'
+          })
+        });
+
+        if (analysisTempResponse.ok) {
+          const analysisTempContent = await analysisTempResponse.json();
+
+          // Use the AI generation endpoint with an analysis prompt
+          const analysisPrompt = `Analyze this content and return the result in JSON format with this structure:
+          {"keywords": ["extracted", "keywords", "from_content"], "tone": "detected_tone", "sentiment": {"label": "detected_sentiment", "score": actual_confidence_decimal}, "confidence": analysis_confidence_decimal}
+
+          Guidelines:
+          - Extract 3-5 relevant keywords from the actual content
+          - Determine the tone (professional, casual, enthusiastic, formal, friendly, persuasive, etc.)
+          - Analyze sentiment as positive, negative, or neutral with a score between 0.0-1.0
+          - Provide your confidence in this analysis as a decimal between 0.0-1.0
+          - Use actual values based on the content, not the examples above
+
+          Content to analyze: "${aiResult.generatedText}"
+
+          Return only the JSON object, no additional text.`;
+
+          const analysisResponse = await fetch(`/api/v1/ai/generate/${analysisTempContent.id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: analysisPrompt + `\n\nAnalysis ID: ${Date.now()}`, // Add uniqueness to prevent caching
+              model: selectedProvider
+            })
+          });
+
+          if (analysisResponse.ok) {
+            const analysisAiResult = await analysisResponse.json();
+            
+            // Parse the AI response to extract analysis data
+            try {
+              const analysisText = analysisAiResult.generatedText.trim();
+              let parsedAnalysis;
+              
+              // Try to extract JSON from the response
+              const jsonMatch = analysisText.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
+              if (jsonMatch) {
+                parsedAnalysis = JSON.parse(jsonMatch[0]);
+              } else {
+                // Fallback parsing
+                parsedAnalysis = JSON.parse(analysisText);
+              }
+              
+              analysisResult = parsedAnalysis;
+            } catch (parseErr) {
+              console.warn('Failed to parse analysis data:', parseErr);
+            }
+          }
+          
+          // Clean up the analysis temporary content piece
+          await fetch(`/api/v1/content/${analysisTempContent.id}`, { method: 'DELETE' });
+        }
+      } catch (analysisErr) {
+        console.warn('Failed to generate automatic analysis:', analysisErr);
+        // Continue without analysis rather than failing the generation
+      }
       
-      setGeneratedContent(mockGeneratedContent);
+      // Clean up the original temporary content piece since this is just for preview
+      await fetch(`/api/v1/content/${tempContent.id}`, { method: 'DELETE' });
+      
+      setGeneratedContent(aiResult.generatedText);
+      setAnalysisData(analysisResult);
       setStep('generated');
       
       // Show success toast
       toast({
         title: 'AI content generated',
-        description: `Your ${type} has been enhanced with AI. Review and save to add it to your campaign.`,
+        description: `Your ${type} has been enhanced with AI and analyzed. Review and save to add it to your campaign.`,
         variant: 'success'
       });
     } catch (err) {
@@ -131,25 +234,156 @@ export default function ContentCreationModal({
     }
   };
 
-  const handleAnalyze = async () => {
-    if (!generatedContent) return;
+  const handleRegenerate = async () => {
+    if (!originalContent.trim()) {
+      setError('Original content is required for regeneration');
+      return;
+    }
     
-    setAnalyzing(true);
+    setRegenerating(true);
+    setError('');
+    
     try {
-      // Simulate analysis for now
-      setAnalysisData({
-        keywords: ['example', 'keywords', 'here'],
-        tone: 'professional',
-        sentiment: { label: 'positive', score: 0.85 },
-        confidence: 0.9
+      // Create a temporary content piece to generate AI content
+      const tempContentResponse = await fetch('/api/v1/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId: campaignId,
+          type,
+          originalContent,
+          language: 'en'
+        })
       });
-      setStep('analysis');
+
+      if (!tempContentResponse.ok) {
+        throw new Error('Failed to create content piece');
+      }
+
+      const tempContent = await tempContentResponse.json();
+
+      // Generate with current settings (may have changed prompt)
+      const aiResponse = await fetch(`/api/v1/ai/generate/${tempContent.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: customPrompt,
+          model: selectedProvider
+        })
+      });
+
+      if (!aiResponse.ok) {
+        // Don't auto-delete on HTTP failure - AI might have succeeded despite HTTP timeout  
+        // Get error details for better debugging
+        let errorMessage = 'Failed to regenerate AI content';
+        try {
+          const errorData = await aiResponse.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If we can't parse error, use status text
+          errorMessage = `${aiResponse.status}: ${aiResponse.statusText}`;
+        }
+        
+        // Log the content piece ID so user can manually clean up if needed
+        console.warn(`AI regeneration failed for content piece ${tempContent.id}. You may need to manually delete it.`);
+        
+        throw new Error(errorMessage);
+      }
+
+      const aiResult = await aiResponse.json();
+      
+      // Automatically analyze the regenerated content
+      let analysisResult = null;
+      try {
+        // Create another temporary content piece for analysis
+        const analysisTempResponse = await fetch('/api/v1/content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaignId: campaignId,
+            type: 'analysis',
+            originalContent: aiResult.generatedText,
+            language: 'en'
+          })
+        });
+
+        if (analysisTempResponse.ok) {
+          const analysisTempContent = await analysisTempResponse.json();
+
+          // Use the AI generation endpoint with an analysis prompt
+          const analysisPrompt = `Analyze this content and return the result in JSON format with this structure:
+          {"keywords": ["extracted", "keywords", "from_content"], "tone": "detected_tone", "sentiment": {"label": "detected_sentiment", "score": actual_confidence_decimal}, "confidence": analysis_confidence_decimal}
+
+          Guidelines:
+          - Extract 3-5 relevant keywords from the actual content
+          - Determine the tone (professional, casual, enthusiastic, formal, friendly, persuasive, etc.)
+          - Analyze sentiment as positive, negative, or neutral with a score between 0.0-1.0
+          - Provide your confidence in this analysis as a decimal between 0.0-1.0
+          - Use actual values based on the content, not the examples above
+
+          Content to analyze: "${aiResult.generatedText}"
+
+          Return only the JSON object, no additional text.`;
+
+          const analysisResponse = await fetch(`/api/v1/ai/generate/${analysisTempContent.id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: analysisPrompt + `\n\nAnalysis ID: ${Date.now()}`, // Add uniqueness to prevent caching
+              model: selectedProvider
+            })
+          });
+
+          if (analysisResponse.ok) {
+            const analysisAiResult = await analysisResponse.json();
+            
+            // Parse the AI response to extract analysis data
+            try {
+              const analysisText = analysisAiResult.generatedText.trim();
+              let parsedAnalysis;
+              
+              // Try to extract JSON from the response
+              const jsonMatch = analysisText.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
+              if (jsonMatch) {
+                parsedAnalysis = JSON.parse(jsonMatch[0]);
+              } else {
+                // Fallback parsing
+                parsedAnalysis = JSON.parse(analysisText);
+              }
+              
+              analysisResult = parsedAnalysis;
+            } catch (parseErr) {
+              console.warn('Failed to parse analysis data:', parseErr);
+            }
+          }
+          
+          // Clean up the analysis temporary content piece
+          await fetch(`/api/v1/content/${analysisTempContent.id}`, { method: 'DELETE' });
+        }
+      } catch (analysisErr) {
+        console.warn('Failed to generate automatic analysis:', analysisErr);
+        // Continue without analysis rather than failing the regeneration
+      }
+      
+      // Clean up the original temporary content piece
+      await fetch(`/api/v1/content/${tempContent.id}`, { method: 'DELETE' });
+      
+      setGeneratedContent(aiResult.generatedText);
+      setAnalysisData(analysisResult);
+      
+      // Show success toast
+      toast({
+        title: 'Content regenerated',
+        description: `Your ${type} has been regenerated with AI and analyzed.`,
+        variant: 'success'
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to analyze content');
+      setError(err instanceof Error ? err.message : 'Failed to regenerate content');
     } finally {
-      setAnalyzing(false);
+      setRegenerating(false);
     }
   };
+
 
   const handleSave = async () => {
     try {
@@ -163,17 +397,108 @@ export default function ContentCreationModal({
       });
       
       // Then generate AI content for it using the generated content we have
-      await apiClient.generateContent(content.id, {
+      const aiGeneration = await apiClient.generateContent(content.id, {
         prompt: customPrompt,
         model: selectedProvider,
       });
+      
+      // Automatically analyze the generated content if we have analysis data or generate it
+      let finalAnalysisData = analysisData;
+      if (!finalAnalysisData && generatedContent) {
+        try {
+          // Create a temporary content piece for analysis
+          const tempContentResponse = await fetch('/api/v1/content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaignId: campaignId,
+              type: 'analysis',
+              originalContent: generatedContent,
+              language: 'en'
+            })
+          });
+
+          if (tempContentResponse.ok) {
+            const tempContent = await tempContentResponse.json();
+
+            // Use the AI generation endpoint with an analysis prompt
+            const analysisPrompt = `Analyze this content and return the result in JSON format with this structure:
+            {"keywords": ["extracted", "keywords", "from_content"], "tone": "detected_tone", "sentiment": {"label": "detected_sentiment", "score": actual_confidence_decimal}, "confidence": analysis_confidence_decimal}
+
+            Guidelines:
+            - Extract 3-5 relevant keywords from the actual content
+            - Determine the tone (professional, casual, enthusiastic, formal, friendly, persuasive, etc.)
+            - Analyze sentiment as positive, negative, or neutral with a score between 0.0-1.0
+            - Provide your confidence in this analysis as a decimal between 0.0-1.0
+            - Use actual values based on the content, not the examples above
+
+            Content to analyze: "${generatedContent}"
+
+            Return only the JSON object, no additional text.`;
+
+            const analysisResponse = await fetch(`/api/v1/ai/generate/${tempContent.id}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                prompt: analysisPrompt,
+                model: selectedProvider
+              })
+            });
+
+            if (analysisResponse.ok) {
+              const analysisResult = await analysisResponse.json();
+              
+              // Parse the AI response to extract analysis data
+              try {
+                const analysisText = analysisResult.generatedText.trim();
+                let parsedAnalysis;
+                
+                // Try to extract JSON from the response
+                const jsonMatch = analysisText.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
+                if (jsonMatch) {
+                  parsedAnalysis = JSON.parse(jsonMatch[0]);
+                } else {
+                  // Fallback parsing
+                  parsedAnalysis = JSON.parse(analysisText);
+                }
+                
+                finalAnalysisData = parsedAnalysis;
+              } catch (parseErr) {
+                console.warn('Failed to parse analysis data:', parseErr);
+              }
+            }
+            
+            // Clean up the temporary content piece
+            await fetch(`/api/v1/content/${tempContent.id}`, { method: 'DELETE' });
+          }
+        } catch (analysisErr) {
+          console.warn('Failed to generate automatic analysis:', analysisErr);
+          // Continue without analysis rather than failing the save
+        }
+      }
+      
+      // If we have analysis data, update the AI generation's metadata
+      if (finalAnalysisData && aiGeneration.id) {
+        try {
+          await fetch(`/api/v1/ai/generations/${aiGeneration.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              metadata: finalAnalysisData
+            })
+          });
+        } catch (metadataErr) {
+          console.warn('Failed to save analysis metadata:', metadataErr);
+          // Continue without failing the save
+        }
+      }
       
       setContentWasCreated(true); // Mark that content was successfully created
       
       // Show success toast for saving
       toast({
         title: 'Content saved successfully',
-        description: `Your ${type} has been saved to the campaign.`,
+        description: `Your ${type} has been saved to the campaign with AI analysis.`,
         variant: 'success'
       });
       
@@ -186,8 +511,13 @@ export default function ContentCreationModal({
     }
   };
 
+  const handleGoBack = () => {
+    setStep('setup');
+    // Keep all data intact - don't reset anything
+  };
+
   const handleClose = () => {
-    if (!loading && !analyzing) {
+    if (!loading) {
       // If content was created, notify parent of success
       if (contentWasCreated) {
         onSuccess();
@@ -213,7 +543,6 @@ export default function ContentCreationModal({
     switch (step) {
       case 'setup': return 'Create Content';
       case 'generated': return 'Review Generated Content';
-      case 'analysis': return 'Content Analysis';
       default: return 'Create Content';
     }
   };
@@ -222,12 +551,27 @@ export default function ContentCreationModal({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{getStepTitle()}</DialogTitle>
-          <DialogDescription>
-            {step === 'setup' && 'Provide your original content and configure AI generation settings.'}
-            {step === 'generated' && 'Review the AI-generated content and optionally analyze it.'}
-            {step === 'analysis' && 'Review the content analysis results before saving.'}
-          </DialogDescription>
+          <div className="relative">
+            {step === 'generated' && (
+              <Button
+                onClick={handleGoBack}
+                variant="ghost"
+                size="sm"
+                disabled={loading || regenerating}
+                className="absolute -top-2 -left-2 p-1 h-8 w-8 z-10"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+            )}
+            <DialogTitle className={`${step === 'generated' ? 'ml-8' : ''}`}>
+              {getStepTitle()}
+            </DialogTitle>
+            <DialogDescription className={`${step === 'generated' ? 'ml-8' : ''}`}>
+              {step === 'setup' && 'Provide your original content and configure AI generation settings.'}
+              {step === 'generated' && 'Review the AI-generated content with analysis results and save to your campaign.'}
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
         {error && (
@@ -245,7 +589,7 @@ export default function ContentCreationModal({
               setOriginalContent={setOriginalContent}
               language={language}
               setLanguage={setLanguage}
-              loading={loading}
+              loading={loading || regenerating}
             />
             
             <AIGenerationSettings
@@ -256,21 +600,22 @@ export default function ContentCreationModal({
               customPrompt={customPrompt}
               setCustomPrompt={setCustomPrompt}
               contentType={type}
-              loading={loading}
+              loading={loading || regenerating}
             />
             
             <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
+              <Button type="button" variant="outline" onClick={handleClose} disabled={loading || regenerating}>
                 Cancel
               </Button>
               <Button 
                 onClick={handleGenerate} 
-                disabled={loading || !customPrompt.trim() || !originalContent.trim()}
+                disabled={loading || regenerating || !customPrompt.trim() || !originalContent.trim()}
+                data-testid="generate-ai-button"
               >
-                {loading ? (
+                {loading || regenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
+                    {regenerating ? 'Regenerating...' : 'Generating...'}
                   </>
                 ) : (
                   <>
@@ -287,22 +632,15 @@ export default function ContentCreationModal({
           <GeneratedContentReview
             generatedContent={generatedContent}
             originalContent={originalContent}
-            onAnalyze={handleAnalyze}
+            analysisData={analysisData}
             onSave={handleSave}
             onCancel={onClose}
-            analyzing={analyzing}
+            onRegenerate={handleRegenerate}
             loading={loading}
+            regenerating={regenerating}
           />
         )}
         
-        {step === 'analysis' && (
-          <ContentAnalysisStep
-            analysisData={analysisData}
-            onSave={handleSave}
-            onBack={() => setStep('generated')}
-            loading={loading}
-          />
-        )}
       </DialogContent>
     </Dialog>
   );

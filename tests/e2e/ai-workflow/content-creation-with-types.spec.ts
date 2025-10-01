@@ -16,11 +16,11 @@ test('should handle content creation with different content types', async ({ pag
   // Navigate to campaign detail page
   await page.goto(`/campaigns/${campaign.id}`);
   
-  const contentTypes = ['headline', 'description', 'body', 'cta', 'tagline'];
+  const contentTypes = ['headline', 'description', 'body_content', 'cta', 'tagline'];
   
   for (const contentType of contentTypes) {
     // Click "Add Content" button
-    await page.getByText('Add Content').click();
+    await page.getByRole('button', { name: 'Add Content' }).click();
     
     // Select content type (shadcn Select)
     await page.getByTestId('content-type-select').click();
@@ -28,7 +28,7 @@ test('should handle content creation with different content types', async ({ pag
     const contentTypeLabels: Record<string, string> = {
       'headline': 'Headline',
       'description': 'Description',
-      'body': 'Body Content',
+      'body_content': 'Body Content',
       'cta': 'Call to Action',
       'tagline': 'Tagline',
       'social_post': 'Social Media Post'
@@ -43,11 +43,11 @@ test('should handle content creation with different content types', async ({ pag
     
     // Wait for generation and then save
     await expect(page.getByText('AI content generated').first()).toBeVisible();
-    await page.getByRole('button', { name: 'Save Content' }).click();
+    await page.locator('button:has-text("Save")').click();
     await page.waitForTimeout(1000);
     
-    // Should show the content type (capitalized and with spaces)
-    const displayName = contentType.charAt(0).toUpperCase() + contentType.slice(1).replace('_', ' ');
+    // Should show the content type using the correct display label
+    const displayName = contentTypeLabels[contentType];
     // Newest content appears first
     const newCard = page.getByTestId('content-card').first();
     await expect(newCard).toBeVisible();

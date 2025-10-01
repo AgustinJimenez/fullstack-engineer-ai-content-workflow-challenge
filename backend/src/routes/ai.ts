@@ -10,6 +10,7 @@ router.post('/generate/:contentId', aiController.generateContent);
 router.post('/translate/:contentId', aiController.translateContent);
 router.post('/analyze/:contentId', aiController.analyzeContent);
 router.get('/generations/:contentId', aiController.getGenerations);
+router.put('/generations/:generationId', aiController.updateGeneration);
 
 // AI Model Comparison
 router.post('/compare/:contentId', aiComparisonController.compareModels.bind(aiComparisonController));

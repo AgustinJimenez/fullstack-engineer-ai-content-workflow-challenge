@@ -1,15 +1,15 @@
-// Set test environment first
-process.env.NODE_ENV = 'test';
-process.env.DB_NAME = 'ai_content_test';
-process.env.DB_HOST = 'localhost';
-process.env.DB_PORT = '5432';
-process.env.DB_USER = 'postgres';
-process.env.DB_PASS = 'postgres';
-
 import { sequelize } from '../src/config/database';
+import { ensureTestDatabase, cleanTestDatabase } from './helpers/database-setup';
 
 // Global test setup
 beforeAll(async () => {
+  // Ensure test database exists
+  try {
+    await ensureTestDatabase();
+  } catch (error) {
+    console.error('❌ Failed to ensure test database exists:', error);
+    // Continue anyway - CI environment handles this differently
+  }
   
   // Connect to test database
   try {

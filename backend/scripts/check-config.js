@@ -43,8 +43,8 @@ const requiredVars = [
 
 // Optional but recommended variables
 const recommendedVars = [
-  { name: 'OPENAI_API_KEY', description: 'OpenAI API key (or set USE_FAKE_AI=true)' },
-  { name: 'ANTHROPIC_API_KEY', description: 'Anthropic API key (or set USE_FAKE_AI=true)' },
+  { name: 'OPENAI_API_KEY', description: 'OpenAI API key (or set AI_PROVIDER=fake)' },
+  { name: 'ANTHROPIC_API_KEY', description: 'Anthropic API key (or set AI_PROVIDER=fake)' },
   { name: 'FRONTEND_URL', description: 'Frontend application URL' },
 ];
 
@@ -97,8 +97,8 @@ function checkRecommendedVariables() {
   for (const variable of recommendedVars) {
     const value = process.env[variable.name];
     if (!value || value.trim() === '') {
-      if (variable.name.includes('API_KEY') && process.env.USE_FAKE_AI === 'true') {
-        log.info(`${variable.name} is not set, but USE_FAKE_AI=true (OK for development/testing)`);
+      if (variable.name.includes('API_KEY') && (process.env.AI_PROVIDER === 'fake' || process.env.NODE_ENV === 'test')) {
+        log.info(`${variable.name} is not set, but using fake provider (OK for development/testing)`);
       } else {
         log.warning(`${variable.name} is not set (${variable.description})`);
       }
@@ -179,10 +179,10 @@ async function checkDatabaseConnection() {
 function checkAIConfiguration() {
   log.header('Checking AI Service Configuration');
   
-  const useFakeAI = process.env.USE_FAKE_AI === 'true';
+  const useFakeAI = process.env.AI_PROVIDER === 'fake' || process.env.NODE_ENV === 'test';
   
   if (useFakeAI) {
-    log.info('Using fake AI responses (USE_FAKE_AI=true)');
+    log.info('Using fake AI responses (AI_PROVIDER=fake or NODE_ENV=test)');
     log.success('AI configuration is valid for testing');
     return;
   }
@@ -191,10 +191,10 @@ function checkAIConfiguration() {
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   
   if (!openaiKey && !anthropicKey) {
-    log.error('No AI API keys configured and USE_FAKE_AI is not enabled');
+    log.error('No AI API keys configured and fake provider is not enabled');
     log.info('Either:');
     log.info('  - Set OPENAI_API_KEY and/or ANTHROPIC_API_KEY');
-    log.info('  - Set USE_FAKE_AI=true for testing without API keys');
+    log.info('  - Set AI_PROVIDER=fake for testing without API keys');
     return;
   }
   

@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import campaignRoutes from './routes/campaigns';
 import contentRoutes from './routes/content';
 import aiRoutes from './routes/ai';
+import langchainRoutes from './routes/langchain';
 import eventRoutes from './routes/events';
 import healthRoutes from './routes/health';
 import { createApolloServer } from './graphql/server';
@@ -49,6 +50,7 @@ export async function createApp() {
   app.use('/api/v1/campaigns', campaignRoutes);
   app.use('/api/v1/content', contentRoutes);
   app.use('/api/v1/ai', aiRoutes);
+  app.use('/api/v1/langchain', langchainRoutes);
   app.use('/api/v1/events', eventRoutes);
 
   // Error handling middleware

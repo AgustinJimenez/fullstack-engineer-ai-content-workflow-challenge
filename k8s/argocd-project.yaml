@@ -1,0 +1,132 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ai-content-workflow-project
+  namespace: argocd
+  labels:
+    environment: production
+  annotations:
+    description: "ArgoCD project for AI Content Workflow application"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: AI Content Workflow application deployment and management
+  
+  # Source repositories that applications in this project can use
+  sourceRepos:
+    - https://github.com/your-org/fullstack-engineer-ai-content-workflow-challenge.git
+    - https://github.com/your-org/*  # Allow other repos from same org
+  
+  # Allowed destination clusters and namespaces
+  destinations:
+    - namespace: ai-content-workflow
+      server: https://kubernetes.default.svc
+    - namespace: ai-content-workflow-*  # Allow namespaces with prefix (staging, etc)
+      server: https://kubernetes.default.svc
+  
+  # Cluster resources that can be managed (whitelisted)
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: storage.k8s.io
+      kind: StorageClass
+    - group: networking.k8s.io
+      kind: IngressClass
+  
+  # Namespace-scoped resources that can be managed
+  namespaceResourceWhitelist:
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Secret
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: ServiceAccount
+    - group: ''
+      kind: PersistentVolumeClaim
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: batch
+      kind: Job
+    - group: batch
+      kind: CronJob
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: policy
+      kind: PodDisruptionBudget
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
+    - group: monitoring.coreos.com
+      kind: ServiceMonitor
+    - group: monitoring.coreos.com
+      kind: PrometheusRule
+  
+  # Deny certain resources (blacklisted)
+  namespaceResourceBlacklist: []
+  
+  # Roles for project-specific access control
+  roles:
+    - name: read-only
+      description: Read-only access to applications
+      policies:
+        - p, proj:ai-content-workflow-project:read-only, applications, get, ai-content-workflow-project/*, allow
+        - p, proj:ai-content-workflow-project:read-only, applications, list, ai-content-workflow-project/*, allow
+      groups:
+        - developers
+    
+    - name: deployment-manager
+      description: Can sync and manage deployments
+      policies:
+        - p, proj:ai-content-workflow-project:deployment-manager, applications, get, ai-content-workflow-project/*, allow
+        - p, proj:ai-content-workflow-project:deployment-manager, applications, sync, ai-content-workflow-project/*, allow
+        - p, proj:ai-content-workflow-project:deployment-manager, applications, override, ai-content-workflow-project/*, allow
+        - p, proj:ai-content-workflow-project:deployment-manager, applications, action/*, ai-content-workflow-project/*, allow
+      groups:
+        - devops
+        - platform-engineering
+    
+    - name: admin
+      description: Full administrative access
+      policies:
+        - p, proj:ai-content-workflow-project:admin, applications, *, ai-content-workflow-project/*, allow
+      groups:
+        - platform-admins
+  
+  # Sync windows - control when syncs can happen
+  syncWindows:
+    - kind: allow
+      schedule: '0 9-17 * * 1-5'  # Mon-Fri, 9am-5pm
+      duration: 8h
+      applications:
+        - '*'
+      manualSync: true
+    - kind: deny
+      schedule: '0 0-6 * * *'     # Deny automatic syncs between midnight-6am
+      duration: 6h
+      applications:
+        - '*'
+      manualSync: false  # Still allow manual syncs during this window
+  
+  # Orphaned resources monitoring
+  orphanedResources:
+    warn: true  # Warn about orphaned resources
+    ignore: []  # Don't ignore any orphaned resources
+  
+  # Signature keys for commit signature verification
+  signatureKeys: []
+  
+  # Resource quotas and limits (optional)
+  # quotas: []

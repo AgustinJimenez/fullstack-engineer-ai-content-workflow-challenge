@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { ContentPiece, AIGeneration } from '@/types';
+import { getLanguageDisplayName } from '@/utils/modelUtils';
 import {
   Dialog,
   DialogContent,
@@ -177,7 +178,7 @@ export default function ReviewModal({ contentPiece, isOpen, onClose, onSuccess }
                     <div className="bg-blue-50 p-4 rounded-lg border">
                       <p className="text-gray-800 mb-2">{selectedGeneration.generatedText}</p>
                       <div className="text-xs text-gray-600">
-                        <p>AI-Generated ({selectedGeneration.modelVersion}):</p>
+                        <p>Generated in {getLanguageDisplayName(contentPiece.language)}:</p>
                         {selectedGeneration.promptUsed && (
                           <p className="mt-1">Prompt: {selectedGeneration.promptUsed}</p>
                         )}
@@ -215,7 +216,7 @@ export default function ReviewModal({ contentPiece, isOpen, onClose, onSuccess }
                       <div key={generation.id} className="bg-purple-50 p-4 rounded-lg border">
                         <div className="flex justify-between items-start mb-3">
                           <span className="font-medium text-purple-800 text-sm">
-                            AI Content Analysis {generation.modelVersion}
+                            Content Analysis
                           </span>
                           <span className="text-xs text-gray-500">
                             {formatDate(generation.createdAt)}
@@ -278,8 +279,8 @@ export default function ReviewModal({ contentPiece, isOpen, onClose, onSuccess }
                 {contentPiece.translations.map((translation) => (
                   <div key={translation.id} className="bg-green-50 p-3 rounded-lg border">
                     <div className="flex justify-between items-start mb-1">
-                      <span className="font-medium text-green-800 uppercase text-sm">
-                        [{translation.targetLanguage} Translation]:
+                      <span className="font-medium text-green-800 text-sm">
+                        {getLanguageDisplayName(translation.targetLanguage)}:
                       </span>
                       <span className="text-xs text-gray-500">
                         {formatDate(translation.createdAt)}

@@ -125,7 +125,7 @@ export class AIComparisonController {
     const startTime = Date.now();
     
     // Check if we should use fake AI
-    const useFakeAI = process.env.NODE_ENV === 'test' || process.env.USE_FAKE_AI === 'true';
+    const useFakeAI = process.env.NODE_ENV === 'test';
     
     if (useFakeAI || (model === 'openai' && !openai) || (model === 'anthropic' && !anthropic)) {
       return this.generateFakeResult(model, prompt, contentPiece, startTime);

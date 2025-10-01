@@ -5,7 +5,7 @@ import { ContentPiece } from '../models/ContentPiece';
 import { AIGeneration } from '../models/AIGeneration';
 import { Translation } from '../models/Translation';
 import { redisEventBus as eventBus } from '../events/redisEventBus';
-import { langchainAI } from '../services/langchainService';
+import { langchainAI, cleanAIResponse } from '../services/langchainService';
 
 // Get unified AI configuration from environment variables
 const AI_PROVIDER = process.env.AI_PROVIDER || 'openai'; // Default to OpenAI
@@ -26,12 +26,13 @@ export class AIController {
     this.translateContent = this.translateContent.bind(this);
     this.analyzeContent = this.analyzeContent.bind(this);
     this.getGenerations = this.getGenerations.bind(this);
+    this.updateGeneration = this.updateGeneration.bind(this);
   }
 
   async generateContent(req: Request, res: Response) {
     try {
       const { contentId } = req.params;
-      const { prompt, model } = req.body;
+      const { prompt, model, seed } = req.body;
 
       const numericId = parseInt(contentId, 10);
       if (Number.isNaN(numericId)) {
@@ -44,30 +45,71 @@ export class AIController {
         return res.status(404).json({ error: 'Content piece not found' });
       }
 
-      // Determine which provider to use (request parameter takes precedence)
-      const selectedProvider = model || AI_PROVIDER;
+      // Determine which provider to use - prioritize AI_PROVIDER env var for fake and ollama
+      const envProvider = AI_PROVIDER;
+      const useFakeAI = process.env.NODE_ENV === 'test';
+      
+      // If in test mode, always use fake provider regardless of other settings
+      let selectedProvider;
+      if (useFakeAI) {
+        selectedProvider = 'fake';
+      } else if (envProvider === 'fake' || envProvider === 'ollama') {
+        selectedProvider = envProvider;
+      } else {
+        selectedProvider = model || envProvider;
+      }
+      
+      console.log(`🔍 AI Provider Debug: envProvider=${envProvider}, model=${model}, selectedProvider=${selectedProvider}, useFakeAI=${useFakeAI}, NODE_ENV=${process.env.NODE_ENV}`);
       
       // Generate content using selected AI provider or fallback to simulation
       let generatedText: string;
       let modelVersion: string;
 
-      const useSim = process.env.NODE_ENV === 'test' || process.env.USE_FAKE_AI === 'true' || !AI_API_KEY;
+      // Check if we should use fake provider  
+      const isFakeProvider = selectedProvider === 'fake';
+      // When AI_PROVIDER=fake, always use pure mock responses (never Ollama)
+      const useOllamaForFake = false;
 
-      if (useSim) {
+      if (isFakeProvider && !useOllamaForFake) {
+        // Pure mock for unit tests or when no AI is available
         const base = contentPiece.originalContent || 'Sample content';
         generatedText = `AI-Generated (${selectedProvider}): ${base} — Compelling & Engaging!`;
         modelVersion = `${selectedProvider}-simulation`;
       } else {
-        // Use LangChain as the unified AI provider
+        // Use LangChain (real AI or Ollama when fake provider is configured)
         const finalPrompt = prompt || 'Generate engaging content';
+        const effectiveProvider = selectedProvider;
         
         generatedText = await langchainAI.generateContent(
           contentPiece.originalContent || '',
           contentPiece.type,
           finalPrompt,
-          selectedProvider
+          effectiveProvider,
+          seed ? parseInt(seed, 10) : undefined
         );
-        modelVersion = `langchain-${selectedProvider}`;
+        
+        // Only clean single-option responses (cleaning is handled in the service for single options)
+        // For multiple option requests, preserve all the generated options
+        const isSingleOptionRequest = finalPrompt.toLowerCase().includes('exactly one') || 
+                                     finalPrompt.toLowerCase().includes('one single') ||
+                                     finalPrompt.toLowerCase().includes('do not provide multiple') ||
+                                     finalPrompt.toLowerCase().includes('just give me one') ||
+                                     // Single-style templates (they ask for "a headline", not "headlines")
+                                     (finalPrompt.toLowerCase().includes('write an') && finalPrompt.toLowerCase().includes('headline')) ||
+                                     (finalPrompt.toLowerCase().includes('craft a') && finalPrompt.toLowerCase().includes('headline')) ||
+                                     (finalPrompt.toLowerCase().includes('create an') && finalPrompt.toLowerCase().includes('headline')) ||
+                                     // Generic single patterns
+                                     (finalPrompt.match(/\b(write|craft|create)\s+(a|an)\s+\w+/i) && 
+                                      !finalPrompt.toLowerCase().includes('options') && 
+                                      !finalPrompt.toLowerCase().includes('variations') &&
+                                      !finalPrompt.toLowerCase().includes('different') &&
+                                      !finalPrompt.match(/\d+/));
+        
+        if (isSingleOptionRequest) {
+          generatedText = cleanAIResponse(generatedText);
+        }
+        
+        modelVersion = (selectedProvider === 'fake' && useOllamaForFake) ? 'ollama-fake-mode' : `langchain-${selectedProvider}`;
       }
 
       const aiGeneration = await AIGeneration.create({
@@ -133,32 +175,21 @@ export class AIController {
       // Translate using configured AI provider or fallback to simulation
       let translatedText: string;
 
-      const useSim = process.env.NODE_ENV === 'test' || process.env.USE_FAKE_AI === 'true' || !AI_API_KEY;
+      const aiProvider = process.env.AI_PROVIDER || 'openai';
+      const useFakeAI = process.env.NODE_ENV === 'test';
+      const isFakeProvider = aiProvider === 'fake' || useFakeAI;
 
-      if (useSim) {
+      if (isFakeProvider) {
         const base = contentPiece.originalContent || 'Sample content';
         translatedText = `[${targetLanguage.toUpperCase()} Translation]: ${base}`;
-      } else if (AI_PROVIDER === 'openai') {
-        const real = await this.translateWithOpenAI(
-          contentPiece.originalContent || '',
-          targetLanguage
-        );
-        translatedText = `[${targetLanguage.toUpperCase()} Translation]: ${real}`;
-      } else if (AI_PROVIDER === 'anthropic') {
-        const real = await this.translateWithAnthropic(
-          contentPiece.originalContent || '',
-          targetLanguage
-        );
-        translatedText = `[${targetLanguage.toUpperCase()} Translation]: ${real}`;
-      } else if (AI_PROVIDER === 'langchain') {
-        // Use LangChain as primary provider
+      } else {
+        // Use the unified LangChain service for all providers
         const real = await langchainAI.translateContent(
           contentPiece.originalContent || '',
-          targetLanguage
+          targetLanguage,
+          aiProvider
         );
-        translatedText = `[${targetLanguage.toUpperCase()} Translation]: ${real}`;
-      } else {
-        return res.status(400).json({ error: 'Unsupported AI provider' });
+        translatedText = real;
       }
 
       // Simulate a quality score (deterministic-ish in test)
@@ -168,7 +199,7 @@ export class AIController {
         contentPieceId: numericId,
         targetLanguage,
         translatedText,
-        aiModel: AI_PROVIDER,
+        aiModel: aiProvider,
         status: 'completed',
         qualityScore,
       });
@@ -227,27 +258,23 @@ export class AIController {
       // Analyze content using configured AI provider or fallback to simulation
       let analysisResults: any;
 
-      const useSim = process.env.NODE_ENV === 'test' || process.env.USE_FAKE_AI === 'true' || !AI_API_KEY;
+      const aiProvider = process.env.AI_PROVIDER || 'openai';
+      const useFakeAI = process.env.NODE_ENV === 'test';
+      const isFakeProvider = aiProvider === 'fake' || useFakeAI;
 
-      if (useSim) {
+      if (isFakeProvider) {
         // Simulate analysis results for testing/demo
         analysisResults = this.simulateAnalysis(textToAnalyze);
-      } else if (AI_PROVIDER === 'openai') {
-        analysisResults = await this.analyzeWithOpenAI(textToAnalyze);
-      } else if (AI_PROVIDER === 'anthropic') {
-        analysisResults = await this.analyzeWithAnthropic(textToAnalyze);
-      } else if (AI_PROVIDER === 'langchain') {
-        // Use LangChain as primary provider
-        analysisResults = await langchainAI.analyzeContent(textToAnalyze);
       } else {
-        return res.status(400).json({ error: 'Unsupported AI provider' });
+        // Use the unified LangChain service for all providers (openai, anthropic, ollama)
+        analysisResults = await langchainAI.analyzeContent(textToAnalyze, aiProvider);
       }
 
       // Store analysis results in AIGeneration metadata
       const aiGeneration = await AIGeneration.create({
         contentPieceId: numericId,
-        aiModel: AI_PROVIDER,
-        modelVersion: this.getModelVersion(AI_PROVIDER),
+        aiModel: aiProvider,
+        modelVersion: this.getModelVersion(aiProvider),
         promptUsed: 'Analyze content for keywords, tone, and sentiment',
         generatedText: `Analysis: ${analysisResults.keywords.join(', ')} | Tone: ${analysisResults.tone} | Sentiment: ${analysisResults.sentiment.label} (${analysisResults.sentiment.score})`,
         metadata: {
@@ -587,6 +614,35 @@ Return only the JSON response, no additional text.`,
     } catch (error) {
       console.error('Anthropic analysis error:', error);
       throw new Error('Failed to analyze content with Anthropic');
+    }
+  }
+
+  async updateGeneration(req: Request, res: Response) {
+    try {
+      const { generationId } = req.params;
+      const { metadata } = req.body;
+
+      const numericId = parseInt(generationId, 10);
+      if (Number.isNaN(numericId)) {
+        return res.status(400).json({ error: 'Invalid generation ID' });
+      }
+
+      // Find the AI generation
+      const generation = await AIGeneration.findByPk(numericId);
+      if (!generation) {
+        return res.status(404).json({ error: 'AI generation not found' });
+      }
+
+      // Update the metadata
+      if (metadata !== undefined) {
+        generation.metadata = metadata;
+        await generation.save();
+      }
+
+      res.json(generation);
+    } catch (error) {
+      console.error('Error updating generation:', error);
+      res.status(500).json({ error: 'Failed to update generation' });
     }
   }
 }

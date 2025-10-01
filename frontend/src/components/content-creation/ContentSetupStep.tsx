@@ -24,7 +24,7 @@ interface ContentSetupStepProps {
 const contentTypes = [
   { value: 'headline', label: 'Headline' },
   { value: 'description', label: 'Description' },
-  { value: 'body', label: 'Body Content' },
+  { value: 'body_content', label: 'Body Content' },
   { value: 'cta', label: 'Call to Action' },
   { value: 'tagline', label: 'Tagline' },
   { value: 'social_post', label: 'Social Media Post' },

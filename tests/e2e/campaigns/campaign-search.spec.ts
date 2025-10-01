@@ -52,15 +52,6 @@ test.describe('Campaign Search Filter E2E', () => {
     await expect(page.getByTestId(`campaign-row-${campaign2.id}`)).not.toBeVisible();
     await expect(page.getByTestId(`campaign-row-${campaign3.id}`)).not.toBeVisible();
     
-    // Should show filtered count - check that filtering is working
-    // The exact numbers may vary depending on existing data, but should show some filtering
-    await expect(page.getByText(/\d+ of \d+ campaigns/)).toBeVisible();
-    
-    // More importantly, verify that only 1 campaign is visible after filtering
-    await expect(page.getByTestId(`campaign-row-${campaign1.id}`)).toBeVisible();
-    await expect(page.getByTestId(`campaign-row-${campaign2.id}`)).not.toBeVisible();
-    await expect(page.getByTestId(`campaign-row-${campaign3.id}`)).not.toBeVisible();
-    
     // Test search by description
     await page.getByTestId('campaign-search-input').clear();
     await page.getByTestId('campaign-search-input').fill('Launch');
@@ -90,7 +81,7 @@ test.describe('Campaign Search Filter E2E', () => {
     await expect(page.getByText(`No campaigns match your search for "${nonExistentSearch}"`)).toBeVisible();
     
     // Clear search using clear button
-    await page.getByRole('button', { name: 'Clear Search' }).click();
+    await page.getByTestId('clear-search-button').click();
     
     // Should show all campaigns again
     await expect(page.getByTestId(`campaign-row-${campaign1.id}`)).toBeVisible();

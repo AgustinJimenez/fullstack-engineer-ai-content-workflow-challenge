@@ -198,7 +198,7 @@ DB_PASS=password
 # AI Services
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
-USE_FAKE_AI=false  # Set to true for testing without API keys
+AI_PROVIDER=openai  # Set to 'fake' for testing without API keys
 
 # Application
 NODE_ENV=development
@@ -228,14 +228,14 @@ npm run test:integration
 npm run test:coverage
 
 # Test with fake AI (no API keys needed)
-USE_FAKE_AI=true npm test
+AI_PROVIDER=fake npm test
 ```
 
 ### Test Configuration
 ```bash
 # Test database
 DB_NAME=ai_content_test
-USE_FAKE_AI=true  # Enables mock AI responses for testing
+AI_PROVIDER=fake  # Enables mock AI responses for testing
 ```
 
 ## 🚀 Deployment
